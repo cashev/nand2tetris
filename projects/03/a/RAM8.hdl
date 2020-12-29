@@ -1,0 +1,65 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/03/a/RAM8.hdl
+
+/**
+ * Memory of 8 registers, each 16 bit-wide. Out holds the value
+ * stored at the memory location specified by address. If load==1, then 
+ * the in value is loaded into the memory location specified by address 
+ * (the loaded value will be emitted to out from the next time step onward).
+ */
+
+CHIP RAM8 {
+    IN in[16], load, address[3];
+    OUT out[16];
+
+    PARTS:
+    Not(in=address[0], out=na0);
+    Not(in=address[1], out=na1);
+    Not(in=address[2], out=na2);
+    And(a=na0, b=na1, out=a00);
+    And(a=a00, b=na2, out=a0);
+    And(a=address[0], b=na1, out=a11);
+    And(a=a11, b=na2, out=a1);
+    And(a=na0, b=address[1], out=a22);
+    And(a=a22, b=na2, out=a2);
+    And(a=address[0], b=address[1], out=a33);
+    And(a=a33, b=na2, out=a3);
+    And(a=na0, b=na1, out=a44);
+    And(a=a44, b=address[2], out=a4);
+    And(a=address[0], b=na1, out=a55);
+    And(a=a55, b=address[2], out=a5);
+    And(a=na0, b=address[1], out=a66);
+    And(a=a66, b=address[2], out=a6);
+    And(a=address[0], b=address[1], out=a77);
+    And(a=a77, b=address[2], out=a7);
+
+    And(a=a0, b=load, out=l0);
+    And(a=a1, b=load, out=l1);
+    And(a=a2, b=load, out=l2);
+    And(a=a3, b=load, out=l3);
+    And(a=a4, b=load, out=l4);
+    And(a=a5, b=load, out=l5);
+    And(a=a6, b=load, out=l6);
+    And(a=a7, b=load, out=l7);
+
+    Register(in=in, load=l0, out=r0);
+    Register(in=in, load=l1, out=r1);
+    Register(in=in, load=l2, out=r2);
+    Register(in=in, load=l3, out=r3);
+    Register(in=in, load=l4, out=r4);
+    Register(in=in, load=l5, out=r5);
+    Register(in=in, load=l6, out=r6);
+    Register(in=in, load=l7, out=r7);
+
+    Mux16(a=r0, b=r1, sel=address[0], out=r00);
+    Mux16(a=r2, b=r3, sel=address[0], out=r01);
+    Mux16(a=r4, b=r5, sel=address[0], out=r02);
+    Mux16(a=r6, b=r7, sel=address[0], out=r03);
+
+    Mux16(a=r00, b=r01, sel=address[1], out=r10);
+    Mux16(a=r02, b=r03, sel=address[1], out=r11);
+
+    Mux16(a=r10, b=r11, sel=address[2], out=out);
+}
