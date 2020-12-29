@@ -1,6 +1,6 @@
 .DS_Store
 tools
-/projects/*/*.cmp
-/projects/*/*.out
-/projects/*/*.tst
+*.cmp
+*.out
+*.tst
 
