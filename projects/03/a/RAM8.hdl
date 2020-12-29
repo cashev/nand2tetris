@@ -15,34 +15,7 @@ CHIP RAM8 {
     OUT out[16];
 
     PARTS:
-    Not(in=address[0], out=na0);
-    Not(in=address[1], out=na1);
-    Not(in=address[2], out=na2);
-    And(a=na0, b=na1, out=a00);
-    And(a=a00, b=na2, out=a0);
-    And(a=address[0], b=na1, out=a11);
-    And(a=a11, b=na2, out=a1);
-    And(a=na0, b=address[1], out=a22);
-    And(a=a22, b=na2, out=a2);
-    And(a=address[0], b=address[1], out=a33);
-    And(a=a33, b=na2, out=a3);
-    And(a=na0, b=na1, out=a44);
-    And(a=a44, b=address[2], out=a4);
-    And(a=address[0], b=na1, out=a55);
-    And(a=a55, b=address[2], out=a5);
-    And(a=na0, b=address[1], out=a66);
-    And(a=a66, b=address[2], out=a6);
-    And(a=address[0], b=address[1], out=a77);
-    And(a=a77, b=address[2], out=a7);
-
-    And(a=a0, b=load, out=l0);
-    And(a=a1, b=load, out=l1);
-    And(a=a2, b=load, out=l2);
-    And(a=a3, b=load, out=l3);
-    And(a=a4, b=load, out=l4);
-    And(a=a5, b=load, out=l5);
-    And(a=a6, b=load, out=l6);
-    And(a=a7, b=load, out=l7);
+    DMux8Way(in=load, sel=address, a=l0, b=l1, c=l2, d=l3, e=l4, f=l5, g=l6, h=l7);
 
     Register(in=in, load=l0, out=r0);
     Register(in=in, load=l1, out=r1);
