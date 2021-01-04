@@ -165,51 +165,149 @@ func writePushPop() string {
 	var ret string
 	switch commandType() {
 	case c_push:
-		ret = writeArgs() + "\n"
+		if arg1() == "constant" {
+			ret = ret + "@" + arg2() + "\n"
+			ret = ret + "D=A" + "\n"
+			ret = ret + "@R0" + "\n"
+			ret = ret + "A=M" + "\n"
+			ret = ret + "M=D" + "\n"
+			ret = ret + "@R0" + "\n"
+			ret = ret + "M=M+1" + "\n" // SPの更新
+			return ret
+		}
+		if arg1() == "static" {
+			fileName := files[pos]
+			arg := "@" + fileName + "." + arg2()
+			ret = ret + arg + "\n"
+			ret = ret + "D=A" + "\n"
+			ret = ret + "@R0" + "\n"
+			ret = ret + "A=M" + "\n"
+			ret = ret + "M=D" + "\n"
+			ret = ret + "@R0" + "\n"
+			ret = ret + "M=M+1" + "\n" // SPの更新
+			return ret
+		}
+
+		// 格納元のアドレス解決
+		ret = ret + popArg2() + "\n"
 		ret = ret + "D=A" + "\n"
-		ret = ret + "@R0" + "\n"
-		ret = ret + "A=M" + "\n"
-		ret = ret + "M=D" + "\n"
-		ret = ret + "@R0" + "\n"
-		ret = ret + "M=M+1" + "\n"
-	case c_pop:
-		ret = "@R0" + "\n"
-		ret = ret + "M=M-1" + "\n"
-		ret = ret + "@R0" + "\n"
+		ret = ret + popArg1() + "\n"
+		ret = ret + "M=D+M" + "\n"
+		// pushする値を保持
+		ret = ret + popArg1() + "\n"
 		ret = ret + "A=M" + "\n"
 		ret = ret + "D=M" + "\n"
-		ret = ret + writeArgs() + "\n"
+		// push
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
 		ret = ret + "M=D" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M+1" + "\n" // SPの更新
+		// 格納元のアドレス解決
+		ret = ret + popArg2() + "\n"
+		ret = ret + "D=A" + "\n"
+		ret = ret + popArg1() + "\n"
+		ret = ret + "M=M-D" + "\n"
+	case c_pop:
+		if arg1() == "static" {
+			fileName := files[pos]
+			arg := "@" + fileName + "." + arg2()
+
+			ret = ret + "@R0" + "\n"
+			ret = ret + "M=M-1" + "\n"
+			ret = ret + "D=M" + "\n"
+			ret = ret + arg + "\n"
+			ret = ret + "M=D" + "\n"
+			return ret
+		}
+
+		// 格納先のアドレス解決
+		ret = ret + popArg2() + "\n"
+		ret = ret + "D=A" + "\n"
+		ret = ret + popArg1() + "\n"
+		ret = ret + "M=D+M" + "\n"
+		// popした値
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M-1" + "\n" // SPの更新
+		ret = ret + "A=M" + "\n"
+		ret = ret + "D=M" + "\n" // popした値を保持
+		// 値を格納
+		ret = ret + popArg1() + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "M=D" + "\n"
+		// 格納先のアドレス解決
+		ret = ret + popArg2() + "\n"
+		ret = ret + "D=A" + "\n"
+		ret = ret + popArg1() + "\n"
+		ret = ret + "M=M-D" + "\n"
 	}
 	return ret
+}
+
+func popArg1() string {
+	var ret string
+	switch arg1() {
+	case "local":
+		ret = "@R1"
+	case "argument":
+		ret = "@R2"
+	case "this":
+		ret = "@R3"
+	case "that":
+		ret = "@R4"
+	case "pointer":
+		ret = "@R3"
+	case "temp":
+		ret = "@R5"
+	case "static":
+		fileName := files[pos]
+		ret = "@" + fileName + "." + arg2()
+	}
+	return ret
+}
+
+func popArg2() string {
+	return "@" + arg2()
 }
 
 func writeArgs() string {
 	switch arg1() {
 	case "local":
-		arg := "@R"
-		arg2, _ := strconv.Atoi(arg2())
-		return arg + strconv.Itoa(1+arg2)
+		ret := "@" + arg2() + "\n"
+		ret = ret + "D=A" + "\n"
+		ret = ret + "@R1" + "\n"
+		ret = ret + "A=M+D" + "\n"
+		return ret
 	case "argument":
-		arg := "@R"
-		arg2, _ := strconv.Atoi(arg2())
-		return arg + strconv.Itoa(2+arg2)
+		ret := "@" + arg2() + "\n"
+		ret = ret + "D=A" + "\n"
+		ret = ret + "@R2" + "\n"
+		ret = ret + "A=M+D" + "\n"
+		return ret
 	case "this":
-		arg := "@R"
-		arg2, _ := strconv.Atoi(arg2())
-		return arg + strconv.Itoa(3+arg2)
+		ret := "@" + arg2() + "\n"
+		ret = ret + "D=A" + "\n"
+		ret = ret + "@R3" + "\n"
+		ret = ret + "A=M+D" + "\n"
+		return ret
 	case "that":
-		arg := "@R"
-		arg2, _ := strconv.Atoi(arg2())
-		return arg + strconv.Itoa(4+arg2)
+		ret := "@" + arg2() + "\n"
+		ret = ret + "D=A" + "\n"
+		ret = ret + "@R4" + "\n"
+		ret = ret + "A=M+D" + "\n"
+		return ret
 	case "pointer":
-		arg := "@R"
-		arg2, _ := strconv.Atoi(arg2())
-		return arg + strconv.Itoa(3+arg2)
+		ret := "@" + arg2() + "\n"
+		ret = ret + "D=A" + "\n"
+		ret = ret + "@R3" + "\n"
+		ret = ret + "A=M+D" + "\n"
+		return ret
 	case "temp":
-		arg := "@R"
-		arg2, _ := strconv.Atoi(arg2())
-		return arg + strconv.Itoa(5+arg2)
+		ret := "@" + arg2() + "\n"
+		ret = ret + "D=A" + "\n"
+		ret = ret + "@R5" + "\n"
+		ret = ret + "A=M+D" + "\n"
+		return ret
 	case "constant":
 		arg := "@" + arg2()
 		return arg
