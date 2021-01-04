@@ -24,6 +24,7 @@ const (
 var files []string
 var commands []string
 var pos = 0
+var labelCounter = 0
 
 func main() {
 	fmt.Println("Hello, World!")
@@ -222,39 +223,197 @@ func writeArgs() string {
 
 func writeArithmetic() string {
 	switch command() {
-	case "add":
+	case "add": // x + y
+		// y
 		ret := "@R0" + "\n"
 		ret = ret + "M=M-1" + "\n"
 		ret = ret + "@R0" + "\n"
 		ret = ret + "A=M" + "\n"
 		ret = ret + "D=M" + "\n"
+		// x
 		ret = ret + "@R0" + "\n"
 		ret = ret + "M=M-1" + "\n"
 		ret = ret + "A=M" + "\n"
+		// x + y
 		ret = ret + "M=D+M" + "\n"
+		// end
 		ret = ret + "@R0" + "\n"
 		ret = ret + "M=M+1" + "\n"
 		return ret
-	case "sub":
+	case "sub": // x - y
+		// y
 		ret := "@R0" + "\n"
 		ret = ret + "M=M-1" + "\n"
 		ret = ret + "@R0" + "\n"
 		ret = ret + "A=M" + "\n"
 		ret = ret + "D=M" + "\n"
+		// x
 		ret = ret + "@R0" + "\n"
 		ret = ret + "M=M-1" + "\n"
 		ret = ret + "A=M" + "\n"
-		ret = ret + "M=D-M" + "\n"
+		// x - y
+		ret = ret + "M=M-D" + "\n"
+		// end
 		ret = ret + "@R0" + "\n"
 		ret = ret + "M=M+1" + "\n"
 		return ret
 	case "neg":
-	case "eq":
-	case "gt":
-	case "lt":
+		// y
+		ret := "@R0" + "\n"
+		ret = ret + "M=M-1" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		// -y
+		ret = ret + "M=-M" + "\n"
+		// end
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M+1" + "\n"
+		return ret
+	case "eq": // x = y
+		// y
+		ret := "@R0" + "\n"
+		ret = ret + "M=M-1" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "D=M" + "\n"
+		// x
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M-1" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		//
+		ret = ret + "D=M-D" + "\n"
+		label := strconv.Itoa(labelCounter)
+		ret = ret + "@label.true." + label + "\n"
+		ret = ret + "D;JEQ" + "\n"
+		// false
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "M=0" + "\n"
+		ret = ret + "@label.end." + label + "\n"
+		ret = ret + "0;JMP" + "\n"
+		// true
+		ret = ret + "(" + "label.true." + label + ")" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "M=-1" + "\n"
+		ret = ret + "(" + "label.end." + label + ")" + "\n"
+		// end
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M+1" + "\n"
+		labelCounter++
+		return ret
+	case "gt": // x > y
+		// y
+		ret := "@R0" + "\n"
+		ret = ret + "M=M-1" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "D=M" + "\n"
+		// x
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M-1" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		//
+		ret = ret + "D=M-D" + "\n"
+		label := strconv.Itoa(labelCounter)
+		ret = ret + "@label.true." + label + "\n"
+		ret = ret + "D;JGT" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "M=0" + "\n"
+		ret = ret + "@label.end." + label + "\n"
+		ret = ret + "0;JMP" + "\n"
+		ret = ret + "(" + "label.true." + label + ")" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "M=-1" + "\n"
+		ret = ret + "(" + "label.end." + label + ")" + "\n"
+		// end
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M+1" + "\n"
+		labelCounter++
+		return ret
+	case "lt": // x < y
+		// y
+		ret := "@R0" + "\n"
+		ret = ret + "M=M-1" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "D=M" + "\n"
+		// x
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M-1" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		//
+		ret = ret + "D=M-D" + "\n"
+		label := strconv.Itoa(labelCounter)
+		ret = ret + "@label.true." + label + "\n"
+		ret = ret + "D;JLT" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "M=0" + "\n"
+		ret = ret + "@label.end." + label + "\n"
+		ret = ret + "0;JMP" + "\n"
+		ret = ret + "(" + "label.true." + label + ")" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "M=-1" + "\n"
+		ret = ret + "(" + "label.end." + label + ")" + "\n"
+		// end
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M+1" + "\n"
+		labelCounter++
+		return ret
 	case "and":
+		// y
+		ret := "@R0" + "\n"
+		ret = ret + "M=M-1" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "D=M" + "\n"
+		// x
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M-1" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		// and
+		ret = ret + "M=D&M" + "\n"
+		// end
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M+1" + "\n"
+		return ret
 	case "or":
+		// y
+		ret := "@R0" + "\n"
+		ret = ret + "M=M-1" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "D=M" + "\n"
+		// x
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M-1" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		// or
+		ret = ret + "M=D|M" + "\n"
+		// end
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M+1" + "\n"
+		return ret
 	case "not":
+		// y
+		ret := "@R0" + "\n"
+		ret = ret + "M=M-1" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "M=!M" + "\n"
+		// end
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M+1" + "\n"
+		return ret
 	}
 
 	return ""
