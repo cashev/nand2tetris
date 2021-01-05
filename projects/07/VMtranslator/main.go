@@ -187,6 +187,34 @@ func writePushPop() string {
 			ret = ret + "M=M+1" + "\n" // SPの更新
 			return ret
 		}
+		if arg1() == "pointer" {
+			// 格納元
+			arg, _ := strconv.Atoi(arg2())
+			arg = 3 + arg
+			ret = ret + "@" + strconv.Itoa(arg) + "\n"
+			ret = ret + "D=M" + "\n"
+			// 格納
+			ret = ret + "@R0" + "\n"
+			ret = ret + "A=M" + "\n"
+			ret = ret + "M=D" + "\n"
+			ret = ret + "@R0" + "\n"
+			ret = ret + "M=M+1" + "\n" // SPの更新
+			return ret
+		}
+		if arg1() == "temp" {
+			// 格納元
+			arg, _ := strconv.Atoi(arg2())
+			arg = 5 + arg
+			ret = ret + "@" + strconv.Itoa(arg) + "\n"
+			ret = ret + "D=M" + "\n"
+			// 格納
+			ret = ret + "@R0" + "\n"
+			ret = ret + "A=M" + "\n"
+			ret = ret + "M=D" + "\n"
+			ret = ret + "@R0" + "\n"
+			ret = ret + "M=M+1" + "\n" // SPの更新
+			return ret
+		}
 
 		// 格納元のアドレス解決
 		ret = ret + popArg2() + "\n"
@@ -217,6 +245,29 @@ func writePushPop() string {
 			ret = ret + "M=M-1" + "\n"
 			ret = ret + "D=M" + "\n"
 			ret = ret + arg + "\n"
+			ret = ret + "M=D" + "\n"
+			return ret
+		}
+		if arg1() == "pointer" {
+			ret = ret + "@R0" + "\n"
+			ret = ret + "M=M-1" + "\n" // SPの更新
+			ret = ret + "A=M" + "\n"
+			ret = ret + "D=M" + "\n" // popした値を保持
+			// 格納先
+			arg, _ := strconv.Atoi(arg2())
+			arg = 3 + arg
+			ret = ret + "@" + strconv.Itoa(arg) + "\n"
+			ret = ret + "M=D" + "\n"
+			return ret
+		}
+		if arg1() == "temp" {
+			ret = ret + "M=M-1" + "\n" // SPの更新
+			ret = ret + "A=M" + "\n"
+			ret = ret + "D=M" + "\n" // popした値を保持
+			// 格納先
+			arg, _ := strconv.Atoi(arg2())
+			arg = 5 + arg
+			ret = ret + "@" + strconv.Itoa(arg) + "\n"
 			ret = ret + "M=D" + "\n"
 			return ret
 		}
@@ -255,10 +306,6 @@ func popArg1() string {
 		ret = "@R3"
 	case "that":
 		ret = "@R4"
-	case "pointer":
-		ret = "@R3"
-	case "temp":
-		ret = "@R5"
 	case "static":
 		fileName := files[pos]
 		ret = "@" + fileName + "." + arg2()
