@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -32,7 +33,7 @@ func main() {
 	initialize(name)
 
 	results := writeCommand()
-	writeFile(results)
+	writeFile(name, results)
 }
 
 func initialize(name string) {
@@ -83,17 +84,18 @@ func initializeFile(filename string) []string {
 		// line = strings.Replace(line, " ", "", -1)
 		slice := strings.Split(line, "//")
 		if slice[0] != "" {
-			files = append(files, f.Name())
+			_, file := filepath.Split(filename)
+			file = strings.Split(file, ".")[0]
+			files = append(files, file)
 			results = append(results, slice[0])
 		}
 	}
 	return results
 }
 
-func writeFile(results []string) {
-	fileName := files[0]
-	fileName = strings.Replace(fileName, ".vm", ".asm", 1)
-	file, err := os.Create(fileName)
+func writeFile(filename string, results []string) {
+	outfilename := strings.Replace(filename, ".vm", ".asm", 1)
+	file, err := os.Create(outfilename)
 	if err != nil {
 		fmt.Println("error")
 	}
@@ -179,7 +181,7 @@ func writePushPop() string {
 			fileName := files[pos]
 			arg := "@" + fileName + "." + arg2()
 			ret = ret + arg + "\n"
-			ret = ret + "D=A" + "\n"
+			ret = ret + "D=M" + "\n"
 			ret = ret + "@R0" + "\n"
 			ret = ret + "A=M" + "\n"
 			ret = ret + "M=D" + "\n"
@@ -240,9 +242,9 @@ func writePushPop() string {
 		if arg1() == "static" {
 			fileName := files[pos]
 			arg := "@" + fileName + "." + arg2()
-
 			ret = ret + "@R0" + "\n"
 			ret = ret + "M=M-1" + "\n"
+			ret = ret + "A=M" + "\n"
 			ret = ret + "D=M" + "\n"
 			ret = ret + arg + "\n"
 			ret = ret + "M=D" + "\n"
