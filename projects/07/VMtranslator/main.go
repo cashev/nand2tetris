@@ -319,55 +319,6 @@ func popArg2() string {
 	return "@" + arg2()
 }
 
-func writeArgs() string {
-	switch arg1() {
-	case "local":
-		ret := "@" + arg2() + "\n"
-		ret = ret + "D=A" + "\n"
-		ret = ret + "@R1" + "\n"
-		ret = ret + "A=M+D" + "\n"
-		return ret
-	case "argument":
-		ret := "@" + arg2() + "\n"
-		ret = ret + "D=A" + "\n"
-		ret = ret + "@R2" + "\n"
-		ret = ret + "A=M+D" + "\n"
-		return ret
-	case "this":
-		ret := "@" + arg2() + "\n"
-		ret = ret + "D=A" + "\n"
-		ret = ret + "@R3" + "\n"
-		ret = ret + "A=M+D" + "\n"
-		return ret
-	case "that":
-		ret := "@" + arg2() + "\n"
-		ret = ret + "D=A" + "\n"
-		ret = ret + "@R4" + "\n"
-		ret = ret + "A=M+D" + "\n"
-		return ret
-	case "pointer":
-		ret := "@" + arg2() + "\n"
-		ret = ret + "D=A" + "\n"
-		ret = ret + "@R3" + "\n"
-		ret = ret + "A=M+D" + "\n"
-		return ret
-	case "temp":
-		ret := "@" + arg2() + "\n"
-		ret = ret + "D=A" + "\n"
-		ret = ret + "@R5" + "\n"
-		ret = ret + "A=M+D" + "\n"
-		return ret
-	case "constant":
-		arg := "@" + arg2()
-		return arg
-	case "static":
-		fileName := files[pos]
-		arg := "@" + fileName + "." + arg2()
-		return arg
-	}
-	return ""
-}
-
 func writeArithmetic() string {
 	switch command() {
 	case "add": // x + y
