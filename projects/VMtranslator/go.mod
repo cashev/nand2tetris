@@ -1,3 +1,3 @@
-module nand2tetris/projects/07/VMtranslator
+module nand2tetris/projects/VMtranslator
 
 go 1.15
