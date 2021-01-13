@@ -111,6 +111,7 @@ func writeFile(filename string, results []string) {
 func writeCommand() []string {
 	var results []string
 	for range commands {
+		results = append(results, "// "+commands[pos]+"\n")
 		switch commandType() {
 		case c_arithmetic:
 			s := writeArithmetic()
@@ -119,6 +120,12 @@ func writeCommand() []string {
 			fallthrough
 		case c_pop:
 			s := writePushPop()
+			results = append(results, s)
+		case c_label:
+			s := writeLabel()
+			results = append(results, s)
+		case c_if:
+			s := writeIf()
 			results = append(results, s)
 		}
 		pos++
@@ -141,6 +148,8 @@ func commandType() int {
 		return c_label
 	case "goto":
 		return c_goto
+	case "if-goto":
+		return c_if
 	case "function":
 		return c_function
 	}
@@ -514,5 +523,36 @@ func writeArithmetic() string {
 		return ret
 	}
 
+	return ""
+}
+
+func writeInit() string {
+	return ""
+}
+func writeLabel() string {
+	ret := ""
+	ret = ret + "(" + arg1() + ")" + "\n"
+	return ret
+}
+func writeGoto() string {
+	return ""
+}
+func writeIf() string {
+	ret := ""
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=M-1" + "\n"
+	ret = ret + "A=M" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@" + arg1() + "\n"
+	ret = ret + "D;JNE" + "\n"
+	return ret
+}
+func writeCall() string {
+	return ""
+}
+func writeReturn() string {
+	return ""
+}
+func writeFunction() string {
 	return ""
 }
