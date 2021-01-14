@@ -130,6 +130,15 @@ func writeCommand() []string {
 		case c_goto:
 			s := writeGoto()
 			results = append(results, s)
+		case c_call:
+			s := writeCall()
+			results = append(results, s)
+		case c_return:
+			s := writeReturn()
+			results = append(results, s)
+		case c_function:
+			s := writeFunction()
+			results = append(results, s)
 		}
 		pos++
 	}
@@ -137,11 +146,6 @@ func writeCommand() []string {
 }
 
 func commandType() int {
-	c := commands[pos]
-	v := strings.Split(c, " ")
-	if len(v) == 1 {
-		return c_arithmetic
-	}
 	switch command() {
 	case "push":
 		return c_push
@@ -153,6 +157,10 @@ func commandType() int {
 		return c_goto
 	case "if-goto":
 		return c_if
+	case "call":
+		return c_call
+	case "return":
+		return c_return
 	case "function":
 		return c_function
 	}
@@ -557,8 +565,79 @@ func writeCall() string {
 	return ""
 }
 func writeReturn() string {
-	return ""
+	ret := ""
+	// FRAME = LCL
+	ret = ret + "@R1" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R5" + "\n"
+	ret = ret + "M=D" + "\n"
+	// *ARG = pop()
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=M-1" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "A=M" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R2" + "\n"
+	ret = ret + "A=M" + "\n"
+	ret = ret + "M=D" + "\n"
+	// SP = ARG+1
+	ret = ret + "@R2" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=D+1" + "\n"
+	// THAT = *(FRAME-1)
+	ret = ret + "@1" + "\n"
+	ret = ret + "D=A" + "\n"
+	ret = ret + "@R5" + "\n"
+	ret = ret + "A=M-D" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R4" + "\n"
+	ret = ret + "M=D" + "\n"
+	// THIS = *(FRAME-2)
+	ret = ret + "@2" + "\n"
+	ret = ret + "D=A" + "\n"
+	ret = ret + "@R5" + "\n"
+	ret = ret + "A=M-D" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R3" + "\n"
+	ret = ret + "M=D" + "\n"
+	// ARG = *(FRAME-3)
+	ret = ret + "@3" + "\n"
+	ret = ret + "D=A" + "\n"
+	ret = ret + "@R5" + "\n"
+	ret = ret + "A=M-D" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R2" + "\n"
+	ret = ret + "M=D" + "\n"
+	// LCL = *(FRAME-4)
+	ret = ret + "@4" + "\n"
+	ret = ret + "D=A" + "\n"
+	ret = ret + "@R5" + "\n"
+	ret = ret + "A=M-D" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R1" + "\n"
+	ret = ret + "M=D" + "\n"
+	// RET = *(FRAME-5)
+	ret = ret + "@5" + "\n"
+	ret = ret + "D=A" + "\n"
+	ret = ret + "@R5" + "\n"
+	ret = ret + "A=M-D" + "\n"
+	// goto RET
+	ret = ret + "0;JMP" + "\n"
+	return ret
 }
 func writeFunction() string {
-	return ""
+	ret := ""
+	ret = ret + "@" + arg1() + "\n"
+	a2, _ := strconv.Atoi(arg2())
+	for i := 0; i < a2; i++ {
+		ret = ret + "@0" + "\n"
+		ret = ret + "D=A" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "A=M" + "\n"
+		ret = ret + "M=D" + "\n"
+		ret = ret + "@R0" + "\n"
+		ret = ret + "M=M+1" + "\n" // SPの更新
+	}
+	return ret
 }
