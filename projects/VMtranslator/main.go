@@ -127,6 +127,9 @@ func writeCommand() []string {
 		case c_if:
 			s := writeIf()
 			results = append(results, s)
+		case c_goto:
+			s := writeGoto()
+			results = append(results, s)
 		}
 		pos++
 	}
@@ -535,7 +538,10 @@ func writeLabel() string {
 	return ret
 }
 func writeGoto() string {
-	return ""
+	ret := ""
+	ret = ret + "@" + arg1() + "\n"
+	ret = ret + "0;JMP" + "\n"
+	return ret
 }
 func writeIf() string {
 	ret := ""
