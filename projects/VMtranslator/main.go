@@ -27,6 +27,8 @@ var commands []string
 var pos = 0
 var labelCounter = 0
 
+var funcName = ""
+
 func main() {
 	fmt.Println("Hello, World!")
 	name := os.Args[1]
@@ -65,7 +67,7 @@ func initializeDir(dirname string) {
 		if !strings.Contains(file.Name(), ".vm") {
 			continue
 		}
-		c := initializeFile(file.Name())
+		c := initializeFile(dirname + "/" + file.Name())
 		commands = append(commands, c...)
 	}
 }
@@ -94,7 +96,14 @@ func initializeFile(filename string) []string {
 }
 
 func writeFile(filename string, results []string) {
-	outfilename := strings.Replace(filename, ".vm", ".asm", 1)
+	outfilename := ""
+	fi, _ := os.Stat(filename)
+	switch mode := fi.Mode(); {
+	case mode.IsDir():
+		outfilename = filename + "/" + fi.Name() + ".asm"
+	case mode.IsRegular():
+		outfilename = strings.Replace(filename, ".vm", ".asm", 1)
+	}
 	file, err := os.Create(outfilename)
 	if err != nil {
 		fmt.Println("error")
@@ -110,6 +119,8 @@ func writeFile(filename string, results []string) {
 
 func writeCommand() []string {
 	var results []string
+	results = append(results, writeInit())
+
 	for range commands {
 		results = append(results, "// "+commands[pos]+"\n")
 		switch commandType() {
@@ -538,31 +549,177 @@ func writeArithmetic() string {
 }
 
 func writeInit() string {
-	return ""
+	ret := ""
+	// SP=256
+	ret = ret + "// SP=256" + "\n"
+	ret = ret + "@256" + "\n"
+	ret = ret + "D=A" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=D" + "\n"
+	// call Sys.init
+	ret = ret + "// call Sys.init" + "\n"
+	label := strconv.Itoa(labelCounter)
+	// push return-address
+	ret = ret + "@return-address." + label + "\n"
+	ret = ret + "D=A" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "A=M" + "\n"
+	ret = ret + "M=D" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=M+1" + "\n"
+	// push LCL
+	ret = ret + "@R1" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "A=M" + "\n"
+	ret = ret + "M=D" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=M+1" + "\n"
+	// push ARG
+	ret = ret + "@R2" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "A=M" + "\n"
+	ret = ret + "M=D" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=M+1" + "\n"
+	// push THIS
+	ret = ret + "@R3" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "A=M" + "\n"
+	ret = ret + "M=D" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=M+1" + "\n"
+	// push THAT
+	ret = ret + "@R4" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "A=M" + "\n"
+	ret = ret + "M=D" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=M+1" + "\n"
+	// ARG = SP-n-5
+	n, _ := strconv.Atoi(arg2())
+	n = n + 5
+	ret = ret + "@" + strconv.Itoa(n) + "\n"
+	ret = ret + "D=A" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "D=M-D" + "\n"
+	ret = ret + "@R2" + "\n"
+	ret = ret + "M=D" + "\n"
+	// LCL = SP
+	ret = ret + "@R0" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R1" + "\n"
+	ret = ret + "M=D" + "\n"
+	// goto f
+	ret = ret + "@" + "Sys.init" + "\n"
+	ret = ret + "0;JMP" + "\n"
+	// (return-address)
+	ret = ret + "(return-address." + label + ")" + "\n"
+
+	labelCounter++
+	return ret
 }
 func writeLabel() string {
+	label := ""
+	if funcName != "" {
+		label = funcName + "."
+	}
 	ret := ""
-	ret = ret + "(" + arg1() + ")" + "\n"
+	ret = ret + "(" + label + arg1() + ")" + "\n"
 	return ret
 }
 func writeGoto() string {
+	label := ""
+	if funcName != "" {
+		label = funcName + "."
+	}
 	ret := ""
-	ret = ret + "@" + arg1() + "\n"
+	ret = ret + "@" + label + arg1() + "\n"
 	ret = ret + "0;JMP" + "\n"
 	return ret
 }
 func writeIf() string {
+	label := ""
+	if funcName != "" {
+		label = funcName + "."
+	}
 	ret := ""
 	ret = ret + "@R0" + "\n"
 	ret = ret + "M=M-1" + "\n"
 	ret = ret + "A=M" + "\n"
 	ret = ret + "D=M" + "\n"
-	ret = ret + "@" + arg1() + "\n"
+	ret = ret + "@" + label + arg1() + "\n"
 	ret = ret + "D;JNE" + "\n"
 	return ret
 }
 func writeCall() string {
-	return ""
+	label := strconv.Itoa(labelCounter)
+	ret := ""
+	// push return-address
+	ret = ret + "@return-address." + label + "\n"
+	ret = ret + "D=A" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "A=M" + "\n"
+	ret = ret + "M=D" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=M+1" + "\n"
+	// push LCL
+	ret = ret + "@R1" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "A=M" + "\n"
+	ret = ret + "M=D" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=M+1" + "\n"
+	// push ARG
+	ret = ret + "@R2" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "A=M" + "\n"
+	ret = ret + "M=D" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=M+1" + "\n"
+	// push THIS
+	ret = ret + "@R3" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "A=M" + "\n"
+	ret = ret + "M=D" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=M+1" + "\n"
+	// push THAT
+	ret = ret + "@R4" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "A=M" + "\n"
+	ret = ret + "M=D" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "M=M+1" + "\n"
+	// ARG = SP-n-5
+	n, _ := strconv.Atoi(arg2())
+	n = n + 5
+	ret = ret + "@" + strconv.Itoa(n) + "\n"
+	ret = ret + "D=A" + "\n"
+	ret = ret + "@R0" + "\n"
+	ret = ret + "D=M-D" + "\n"
+	ret = ret + "@R2" + "\n"
+	ret = ret + "M=D" + "\n"
+	// LCL = SP
+	ret = ret + "@R0" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R1" + "\n"
+	ret = ret + "M=D" + "\n"
+	// goto f
+	ret = ret + "@" + arg1() + "\n"
+	ret = ret + "0;JMP" + "\n"
+	// (return-address)
+	ret = ret + "(return-address." + label + ")" + "\n"
+
+	labelCounter++
+	return ret
 }
 func writeReturn() string {
 	ret := ""
@@ -622,13 +779,17 @@ func writeReturn() string {
 	ret = ret + "D=A" + "\n"
 	ret = ret + "@R5" + "\n"
 	ret = ret + "A=M-D" + "\n"
+	ret = ret + "A=M" + "\n"
 	// goto RET
 	ret = ret + "0;JMP" + "\n"
+
 	return ret
 }
 func writeFunction() string {
+	funcName = arg1()
+
 	ret := ""
-	ret = ret + "@" + arg1() + "\n"
+	ret = ret + "(" + arg1() + ")" + "\n"
 	a2, _ := strconv.Atoi(arg2())
 	for i := 0; i < a2; i++ {
 		ret = ret + "@0" + "\n"
