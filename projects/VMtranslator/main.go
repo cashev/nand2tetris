@@ -294,6 +294,7 @@ func writePushPop() string {
 			return ret
 		}
 		if arg1() == "temp" {
+			ret = ret + "@R0" + "\n"
 			ret = ret + "M=M-1" + "\n" // SPの更新
 			ret = ret + "A=M" + "\n"
 			ret = ret + "D=M" + "\n" // popした値を保持
@@ -726,7 +727,15 @@ func writeReturn() string {
 	// FRAME = LCL
 	ret = ret + "@R1" + "\n"
 	ret = ret + "D=M" + "\n"
-	ret = ret + "@R5" + "\n"
+	ret = ret + "@R13" + "\n"
+	ret = ret + "M=D" + "\n"
+	// RET = *(FRAME-5)
+	ret = ret + "@5" + "\n"
+	ret = ret + "D=A" + "\n"
+	ret = ret + "@R13" + "\n"
+	ret = ret + "A=M-D" + "\n"
+	ret = ret + "D=M" + "\n"
+	ret = ret + "@R14" + "\n"
 	ret = ret + "M=D" + "\n"
 	// *ARG = pop()
 	ret = ret + "@R0" + "\n"
@@ -745,7 +754,7 @@ func writeReturn() string {
 	// THAT = *(FRAME-1)
 	ret = ret + "@1" + "\n"
 	ret = ret + "D=A" + "\n"
-	ret = ret + "@R5" + "\n"
+	ret = ret + "@R13" + "\n"
 	ret = ret + "A=M-D" + "\n"
 	ret = ret + "D=M" + "\n"
 	ret = ret + "@R4" + "\n"
@@ -753,7 +762,7 @@ func writeReturn() string {
 	// THIS = *(FRAME-2)
 	ret = ret + "@2" + "\n"
 	ret = ret + "D=A" + "\n"
-	ret = ret + "@R5" + "\n"
+	ret = ret + "@R13" + "\n"
 	ret = ret + "A=M-D" + "\n"
 	ret = ret + "D=M" + "\n"
 	ret = ret + "@R3" + "\n"
@@ -761,7 +770,7 @@ func writeReturn() string {
 	// ARG = *(FRAME-3)
 	ret = ret + "@3" + "\n"
 	ret = ret + "D=A" + "\n"
-	ret = ret + "@R5" + "\n"
+	ret = ret + "@R13" + "\n"
 	ret = ret + "A=M-D" + "\n"
 	ret = ret + "D=M" + "\n"
 	ret = ret + "@R2" + "\n"
@@ -769,18 +778,14 @@ func writeReturn() string {
 	// LCL = *(FRAME-4)
 	ret = ret + "@4" + "\n"
 	ret = ret + "D=A" + "\n"
-	ret = ret + "@R5" + "\n"
+	ret = ret + "@R13" + "\n"
 	ret = ret + "A=M-D" + "\n"
 	ret = ret + "D=M" + "\n"
 	ret = ret + "@R1" + "\n"
 	ret = ret + "M=D" + "\n"
-	// RET = *(FRAME-5)
-	ret = ret + "@5" + "\n"
-	ret = ret + "D=A" + "\n"
-	ret = ret + "@R5" + "\n"
-	ret = ret + "A=M-D" + "\n"
-	ret = ret + "A=M" + "\n"
 	// goto RET
+	ret = ret + "@R14" + "\n"
+	ret = ret + "A=M" + "\n"
 	ret = ret + "0;JMP" + "\n"
 
 	return ret
