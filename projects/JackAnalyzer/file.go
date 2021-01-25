@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -53,11 +52,45 @@ func readFile(filename string) []string {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
-		slice := strings.Split(line, "//")
-		if slice[0] != "" {
-			_, file := filepath.Split(filename)
-			file = strings.Split(file, ".")[0]
-			results = append(results, slice[0])
+		results = append(results, line)
+	}
+	results = removeComment(results)
+	return results
+}
+
+func removeComment(input []string) []string {
+	// /** が始まったか判定する
+	startComment := false
+	hasCommentStart := func(line string) bool {
+		return strings.Contains(line, COMMENTSTART) || strings.Contains(line, APICOMMENTSTART)
+	}
+	hasCommentEnd := func(line string) bool {
+		return strings.Contains(line, COMMENTEND)
+	}
+
+	var results []string
+	for _, line := range input {
+		if hasCommentStart(line) {
+			startComment = true
+			str := strings.Split(line, COMMENTSTART)[0]
+			if str != "" {
+				results = append(results, str)
+			}
+		}
+		if hasCommentEnd(line) {
+			startComment = false
+			str := strings.Split(line, COMMENTEND)[1]
+			if str != "" {
+				results = append(results, str)
+			}
+			continue
+		}
+		if startComment {
+			continue
+		}
+		str := strings.Split(line, COMMENT)[0]
+		if str != "" {
+			results = append(results, str)
 		}
 	}
 	return results

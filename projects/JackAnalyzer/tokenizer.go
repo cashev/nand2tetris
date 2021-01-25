@@ -1,10 +1,5 @@
 package main
 
-import (
-	"fmt"
-	"strings"
-)
-
 var input = ""
 var pos = 0
 
@@ -77,8 +72,6 @@ func new(kind tokenKind, str string) token {
 }
 
 func initialize(in []string) {
-	in = removeComment(in)
-
 	pos = 0
 	for _, str := range in {
 		input += str
@@ -93,44 +86,4 @@ func tokenize() []token {
 
 func hasMoreTokens() bool {
 	return pos < len(input)
-}
-
-func removeComment(input []string) []string {
-	// /** が始まったか判定する
-	startComment := false
-	hasCommentStart := func(line string) bool {
-		return strings.Contains(line, COMMENTSTART) || strings.Contains(line, APICOMMENTSTART)
-	}
-	hasCommentEnd := func(line string) bool {
-		return strings.Contains(line, COMMENTEND)
-	}
-
-	var results []string
-	for _, line := range input {
-		if hasCommentStart(line) {
-			startComment = true
-			str := strings.Split(line, COMMENTSTART)[0]
-			if str != "" {
-				results = append(results, str)
-			}
-		}
-		if hasCommentEnd(line) {
-			startComment = false
-			str := strings.Split(line, COMMENTEND)[1]
-			if str != "" {
-				results = append(results, str)
-			}
-			continue
-		}
-		if startComment {
-			continue
-		}
-		fmt.Println(line)
-		str := strings.Split(line, COMMENT)[0]
-		if str != "" {
-			results = append(results, str)
-		}
-	}
-
-	return results
 }
