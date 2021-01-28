@@ -12,4 +12,5 @@ func main() {
 	input := read(name)
 
 	initialize(input)
+	tokenize()
 }
