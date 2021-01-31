@@ -35,8 +35,10 @@ func readDir(dirname string) []string {
 		if !strings.Contains(file.Name(), ".jack") {
 			continue
 		}
-		c := readFile(dirname + "/" + file.Name())
-		results = append(results, c...)
+		// c := readFile(dirname + "/" + file.Name())
+		// results = append(results, c...)
+		fileName := dirname + "/" + file.Name()
+		results = append(results, fileName)
 	}
 	return results
 }
@@ -97,15 +99,7 @@ func removeComment(input []string) []string {
 }
 
 func writeFile(filename string, results []string) {
-	outfilename := ""
-	fi, _ := os.Stat(filename)
-	switch mode := fi.Mode(); {
-	case mode.IsDir():
-		outfilename = filename + "/" + fi.Name() + ".asm"
-	case mode.IsRegular():
-		outfilename = strings.Replace(filename, ".vm", ".asm", 1)
-	}
-	file, err := os.Create(outfilename)
+	file, err := os.Create(filename)
 	if err != nil {
 		fmt.Println("error")
 	}
@@ -113,7 +107,7 @@ func writeFile(filename string, results []string) {
 
 	src := ""
 	for _, s := range results {
-		src = src + s
+		src = src + s + "\n"
 	}
 	file.WriteString(src)
 }

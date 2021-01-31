@@ -3,14 +3,14 @@ package main
 var input = ""
 var pos = 0
 
-type tokenKind int
+type tokenKind string
 
 const (
-	KEYWORD tokenKind = iota + 1
-	SYMBOL
-	IDENTIFIER
-	INT_CONST
-	STRING_CONST
+	KEYWORD      tokenKind = "keyword"
+	SYMBOL       tokenKind = "symbol"
+	IDENTIFIER   tokenKind = "identifier"
+	INT_CONST    tokenKind = "integerConstant"
+	STRING_CONST tokenKind = "stringConstant"
 )
 
 const (
@@ -42,6 +42,8 @@ const (
 	RPAREN    = ")"
 	LBRACE    = "{"
 	RBRACE    = "}"
+	LBRACKET  = "["
+	RBRACKET  = "]"
 	PERIOD    = "."
 	COMMA     = ","
 	SEMICOLON = ";"
@@ -51,8 +53,8 @@ const (
 	SLASH     = "/"
 	AND       = "&"
 	OR        = "|"
-	LT        = "<"
-	RT        = ">"
+	LT        = "&lt;"
+	RT        = "&rt;"
 	EQUAL     = "="
 	TILDE     = "~"
 
@@ -136,6 +138,12 @@ func tokenize() []token {
 			tokens = append(tokens, tok)
 		case '}':
 			tok := new(SYMBOL, RBRACE)
+			tokens = append(tokens, tok)
+		case '[':
+			tok := new(SYMBOL, LBRACKET)
+			tokens = append(tokens, tok)
+		case ']':
+			tok := new(SYMBOL, RBRACKET)
 			tokens = append(tokens, tok)
 		case '"':
 			now = next()
