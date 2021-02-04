@@ -19,7 +19,6 @@ func main() {
 }
 
 func analyzeFile(fileName string) {
-	fmt.Println(fileName)
 	input := readFile(fileName)
 
 	initialize(input)
@@ -27,6 +26,6 @@ func analyzeFile(fileName string) {
 	// compile(toks)
 
 	fileName = strings.Replace(fileName, ".jack", "", -1)
-	tResults := compileTokenList(toks)
-	writeFile(fileName+"T.xml", tResults)
+	writeFile(fileName+"T.xml", compileTokenList(toks))
+	writeFile(fileName+".xml", compile(toks))
 }
