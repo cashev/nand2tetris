@@ -51,10 +51,10 @@ const (
 	MINUS     = "-"
 	ASTERISK  = "*"
 	SLASH     = "/"
-	AND       = "&"
+	AND       = "&amp;"
 	OR        = "|"
 	LT        = "&lt;"
-	RT        = "&rt;"
+	RT        = "&gt;"
 	EQUAL     = "="
 	TILDE     = "~"
 
@@ -74,6 +74,7 @@ func new(kind tokenKind, str string) token {
 }
 
 func initialize(in []string) {
+	input = ""
 	pos = 0
 	for _, str := range in {
 		input += str
@@ -144,6 +145,9 @@ func tokenize() []token {
 			tokens = append(tokens, tok)
 		case ']':
 			tok := new(SYMBOL, RBRACKET)
+			tokens = append(tokens, tok)
+		case '~':
+			tok := new(SYMBOL, TILDE)
 			tokens = append(tokens, tok)
 		case '"':
 			now = next()

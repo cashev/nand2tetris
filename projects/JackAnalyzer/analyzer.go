@@ -23,7 +23,6 @@ func analyzeFile(fileName string) {
 
 	initialize(input)
 	toks := tokenize()
-	// compile(toks)
 
 	fileName = strings.Replace(fileName, ".jack", "", -1)
 	writeFile(fileName+"T.xml", compileTokenList(toks))

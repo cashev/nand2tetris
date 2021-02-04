@@ -24,7 +24,8 @@ func compileClass(now token) []string {
 	tok := nextToken()
 	for tok.str != RBRACE {
 		if tok.str == "static" || tok.str == "field" {
-			compileClassVarDec(tok)
+			classVarDec := compileClassVarDec(tok)
+			results = append(results, classVarDec...)
 		}
 		if isSubroutine(tok.str) {
 			subroutine := compileSubroutine(tok)
@@ -43,11 +44,13 @@ func compileClassVarDec(now token) []string {
 	results = append(results, compileToken(now))         // ('static' | 'field')
 	results = append(results, compileToken(nextToken())) // type
 	results = append(results, compileToken(nextToken())) // varName
-	for tok := nextToken(); tok.str == COMMA; tok = nextToken() {
+	tok := nextToken()
+	for tok.str == COMMA {
 		results = append(results, compileToken(tok))         // ','
 		results = append(results, compileToken(nextToken())) // varName
+		tok = nextToken()
 	}
-	results = append(results, compileToken(nextToken())) // ';'
+	results = append(results, compileToken(tok)) // ';'
 	results = append(results, "</classVarDec>")
 	return results
 }
@@ -241,7 +244,22 @@ func compileReturn(now token) []string {
 // 							 ('else' '{' statements '}')?
 func compileIf(now token) []string {
 	results := []string{"<ifStatement>"}
-	results = append(results, compileToken(now)) // if
+	results = append(results, compileToken(now))         // if
+	results = append(results, compileToken(nextToken())) // '('
+	expr, tok := compileExpression(nextToken())
+	results = append(results, expr...)
+	results = append(results, compileToken(tok))         // ')'
+	results = append(results, compileToken(nextToken())) // '{'
+	stmts, tok := compileStatements(nextToken())
+	results = append(results, stmts...)
+	results = append(results, compileToken(tok)) // '}'
+	if readNextToken().str == ELSE {
+		results = append(results, compileToken(nextToken())) // else
+		results = append(results, compileToken(nextToken())) // '{'
+		stmts, tok := compileStatements(nextToken())
+		results = append(results, stmts...)
+		results = append(results, compileToken(tok)) // '}'
+	}
 	results = append(results, "</ifStatement>")
 	return results
 }
@@ -330,13 +348,15 @@ func compileExpressionList(now token) ([]string, token) {
 		results = append(results, "</expressionList>")
 		return results, now
 	}
-	expr, tok := compileExpression(now)
+	expr, tok1 := compileExpression(now)
 	results = append(results, expr...)
 
+	tok := tok1
 	for tok.str == COMMA {
 		results = append(results, compileToken(tok)) // ,
-		expr, tok = compileExpression(now)
+		expr, tok2 := compileExpression(nextToken())
 		results = append(results, expr...)
+		tok = tok2
 	}
 	results = append(results, "</expressionList>")
 	return results, tok
