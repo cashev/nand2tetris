@@ -28,3 +28,15 @@ func analyzeFile(fileName string) {
 	writeFile(fileName+"T.xml", compileTokenList(toks))
 	writeFile(fileName+".xml", compile(toks))
 }
+
+func compileTokenList(toks []token) []string {
+	var tokenList []string
+	tokenList = append(tokenList, "<tokens>")
+	for _, tok := range toks {
+		kind := string(tok.kind)
+		str := "<" + kind + "> " + tok.str + " </" + kind + ">"
+		tokenList = append(tokenList, str)
+	}
+	tokenList = append(tokenList, "</tokens>")
+	return tokenList
+}

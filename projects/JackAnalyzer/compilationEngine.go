@@ -345,17 +345,6 @@ func compileToken(tok token) {
 	results = append(results, str)
 }
 
-func compileTokenList(toks []token) []string {
-	initializeCompileEngine()
-	tokens = toks
-	results = append(results, "<tokens>")
-	for _, tok := range toks {
-		compileToken(tok)
-	}
-	results = append(results, "</tokens>")
-	return results
-}
-
 func nextToken() token {
 	position++
 	return tokens[position]
