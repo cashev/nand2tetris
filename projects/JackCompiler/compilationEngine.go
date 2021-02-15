@@ -2,18 +2,21 @@ package main
 
 var position int
 var tokens []token
+var cur token
 
 var results []string
 
 func initializeCompileEngine() {
 	position = 0
 	tokens = make([]token, 0)
+	cur = token{}
 	results = make([]string, 0)
 }
 
 func compile(toks []token) []string {
 	initializeCompileEngine()
 	tokens = toks
+	cur = tokens[0]
 
 	for position+1 < len(tokens) {
 		tok := tokens[position]
@@ -352,4 +355,12 @@ func nextToken() token {
 
 func readNextToken() token {
 	return tokens[position+1]
+}
+
+func consume(str string) {
+	if cur.str != str {
+		panic("consume error. not match str.")
+	}
+	position++
+	cur = tokens[position]
 }
