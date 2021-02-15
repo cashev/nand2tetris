@@ -34,11 +34,11 @@ func compile(toks []token) []string {
 // class = 'class' className '{' classVarDec* subroutineDec* '}'
 func compileClass() {
 	results = append(results, "<class>")
-	compileCurToken() // class
+	compileToken(cur) // class
 	cur = skip(cur, CLASS)
-	compileIdentifier() // className
+	compileIdentifier(cur) // className
 	cur = nextToken()
-	compileCurToken() // '{'
+	compileToken(cur) // '{'
 	cur = skip(cur, LBRACE)
 
 	for !equal(cur, RBRACE) {
@@ -50,7 +50,7 @@ func compileClass() {
 		}
 		cur = nextToken()
 	}
-	compileCurToken()
+	compileToken(cur)
 	cur = skip(cur, RBRACE)
 	results = append(results, "</class>")
 }
@@ -358,18 +358,12 @@ func compileToken(tok token) {
 	results = append(results, str)
 }
 
-func compileCurToken() {
-	kind := string(cur.kind)
-	str := "<" + kind + "> " + cur.str + " </" + kind + ">"
-	results = append(results, str)
-}
-
-func compileIdentifier() {
-	if cur.kind != IDENTIFIER {
+func compileIdentifier(tok token) {
+	if tok.kind != IDENTIFIER {
 		panic("compile error. not identifier.")
 	}
-	kind := string(cur.kind)
-	str := "<" + kind + "> " + cur.str + " </" + kind + ">"
+	kind := string(tok.kind)
+	str := "<" + kind + "> " + tok.str + " </" + kind + ">"
 	results = append(results, str)
 }
 
