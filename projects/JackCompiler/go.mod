@@ -1,3 +1,3 @@
-module nand2tetris/projects/JackAnalyzer
+module nand2tetris/projects/JackCompiler
 
 go 1.15
