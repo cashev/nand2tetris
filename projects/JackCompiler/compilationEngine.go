@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 var position int
 var tokens []token
 var cur token
@@ -33,11 +35,11 @@ func compile(toks []token) []string {
 func compileClass() {
 	results = append(results, "<class>")
 	compileCurToken() // class
-	consume("class")
+	cur = skip(cur, CLASS)
 	compileIdentifier() // className
 	cur = nextToken()
 	compileCurToken() // '{'
-	consume(LBRACE)
+	cur = skip(cur, LBRACE)
 
 	for !equal(cur, RBRACE) {
 		if equal(cur, STATIC) || equal(cur, FIELD) {
@@ -49,7 +51,7 @@ func compileClass() {
 		cur = nextToken()
 	}
 	compileCurToken()
-	consume(RBRACE)
+	cur = skip(cur, RBRACE)
 	results = append(results, "</class>")
 }
 
@@ -380,14 +382,15 @@ func readNextToken() token {
 	return tokens[position+1]
 }
 
-func consume(str string) {
-	if cur.str != str {
-		panic("consume error. not match str.")
-	}
-	position++
-	cur = tokens[position]
-}
-
 func equal(tok token, str string) bool {
 	return tok.str == str
+}
+
+func skip(tok token, str string) token {
+	if !equal(tok, str) {
+		msg := fmt.Sprintf("skip error. unexpected token. expected %s", str)
+		panic(msg)
+	}
+	position++
+	return tokens[position]
 }
