@@ -6,6 +6,10 @@ var cur token
 
 var results []string
 
+const (
+	EOF = "END OF FILE"
+)
+
 func initializeCompileEngine() {
 	position = 0
 	tokens = make([]token, 0)
@@ -15,33 +19,37 @@ func initializeCompileEngine() {
 
 func compile(toks []token) []string {
 	initializeCompileEngine()
-	tokens = toks
+	tokens = append(toks, token{str: EOF})
 	cur = tokens[0]
 
-	for position+1 < len(tokens) {
-		tok := tokens[position]
-		compileClass(tok)
+	for !equal(cur, EOF) {
+		compileClass()
 	}
+
 	return results
 }
 
 // class = 'class' className '{' classVarDec* subroutineDec* '}'
-func compileClass(now token) {
+func compileClass() {
 	results = append(results, "<class>")
-	compileToken(now)         // class
-	compileToken(nextToken()) // className
-	compileToken(nextToken()) // '{'
-	tok := nextToken()
-	for tok.str != RBRACE {
-		if tok.str == "static" || tok.str == "field" {
-			compileClassVarDec(tok)
+	compileCurToken() // class
+	consume("class")
+	compileIdentifier() // className
+	cur = nextToken()
+	compileCurToken() // '{'
+	consume(LBRACE)
+
+	for !equal(cur, RBRACE) {
+		if equal(cur, STATIC) || equal(cur, FIELD) {
+			compileClassVarDec(cur)
 		}
-		if isSubroutine(tok.str) {
-			compileSubroutine(tok)
+		if isSubroutine(cur.str) {
+			compileSubroutine(cur)
 		}
-		tok = nextToken()
+		cur = nextToken()
 	}
-	compileToken(tok) // '}'
+	compileCurToken()
+	consume(RBRACE)
 	results = append(results, "</class>")
 }
 
@@ -348,6 +356,21 @@ func compileToken(tok token) {
 	results = append(results, str)
 }
 
+func compileCurToken() {
+	kind := string(cur.kind)
+	str := "<" + kind + "> " + cur.str + " </" + kind + ">"
+	results = append(results, str)
+}
+
+func compileIdentifier() {
+	if cur.kind != IDENTIFIER {
+		panic("compile error. not identifier.")
+	}
+	kind := string(cur.kind)
+	str := "<" + kind + "> " + cur.str + " </" + kind + ">"
+	results = append(results, str)
+}
+
 func nextToken() token {
 	position++
 	return tokens[position]
@@ -363,4 +386,8 @@ func consume(str string) {
 	}
 	position++
 	cur = tokens[position]
+}
+
+func equal(tok token, str string) bool {
+	return tok.str == str
 }
