@@ -43,12 +43,11 @@ func compileClass() {
 
 	for !equal(cur, RBRACE) {
 		if equal(cur, STATIC) || equal(cur, FIELD) {
-			compileClassVarDec(cur)
+			compileClassVarDec()
 		}
 		if isSubroutine(cur.str) {
-			compileSubroutine(cur)
+			compileSubroutine()
 		}
-		cur = nextToken()
 	}
 	compileToken(cur)
 	cur = skip(cur, RBRACE)
@@ -56,7 +55,7 @@ func compileClass() {
 }
 
 // classVarDec = ('static' | 'field') type varName (',' varName)* ';'
-func compileClassVarDec(now token) {
+func compileClassVarDec() {
 	results = append(results, "<classVarDec>")
 	compileToken(cur) // 'static' | 'field'
 	cur = nextToken()
@@ -82,40 +81,50 @@ func isSubroutine(str string) bool {
 // subroutineDec = ('construct' | 'function' | 'method')
 //									('void' | type) subroutineName '(' parameterList ')'
 //									subroutineBody
-func compileSubroutine(now token) {
+func compileSubroutine() {
 	results = append(results, "<subroutineDec>")
-	compileToken(now)         // subroutineDec
-	compileToken(nextToken()) // type
-	compileToken(nextToken()) // subroutineName
+	compileToken(cur) // subroutineDec
+	cur = nextToken()
+	compileToken(cur) // type
+	cur = nextToken()
+	compileToken(cur) // subroutineName
+	cur = nextToken()
+	compileToken(cur) // '('
+	cur = skip(cur, LPAREN)
 
-	compileToken(nextToken()) // '('
-	tok := compileParameterList(nextToken())
-	compileToken(tok) // ')'
+	cur = compileParameterList(cur)
+
+	compileToken(cur) // ')'
+	cur = skip(cur, RPAREN)
 
 	// subroutineBody = '{' varDec* statements '}'
 	results = append(results, "<subroutineBody>")
-	compileToken(nextToken()) // '{'
-	tok1 := nextToken()
-	for tok1.str == "var" {
+	compileToken(cur) // '{'
+	cur = skip(cur, LBRACE)
+	for equal(cur, VAR) {
 		results = append(results, "<varDec>")
 		// varDec = 'var' type varName (',' varName)* ';'
-		compileToken(tok1)        // var
-		compileToken(nextToken()) // type
-		compileToken(nextToken()) // varName
-		tok2 := nextToken()
-		for tok2.str == COMMA {
-			compileToken(tok2)        // ','
-			compileToken(nextToken()) // varName
-			tok2 = nextToken()
+		compileToken(cur) // var
+		cur = skip(cur, VAR)
+		compileToken(cur) // type
+		cur = nextToken()
+		compileToken((cur)) // varName
+		cur = nextToken()
+		for equal(cur, COMMA) {
+			compileToken(cur) // ','
+			cur = skip(cur, COMMA)
+			compileToken((cur)) // varName
+			cur = nextToken()
 		}
-		compileToken(tok2) // ';'
-		tok1 = nextToken()
+		compileToken(cur) // ';'
+		cur = skip(cur, SEMICOLON)
 		results = append(results, "</varDec>")
 	}
-	tok3 := compileStatements(tok1)
-	compileToken(tok3) // '}'
-	results = append(results, "</subroutineBody>")
+	cur = compileStatements(cur)
 
+	compileToken(cur) // '}'
+	cur = skip(cur, RBRACE)
+	results = append(results, "</subroutineBody>")
 	results = append(results, "</subroutineDec>")
 }
 
