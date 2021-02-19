@@ -58,16 +58,20 @@ func compileClass() {
 // classVarDec = ('static' | 'field') type varName (',' varName)* ';'
 func compileClassVarDec(now token) {
 	results = append(results, "<classVarDec>")
-	compileToken(now)         // ('static' | 'field')
-	compileToken(nextToken()) // type
-	compileToken(nextToken()) // varName
-	tok := nextToken()
-	for tok.str == COMMA {
-		compileToken(tok)         // ','
-		compileToken(nextToken()) // varName
-		tok = nextToken()
+	compileToken(cur) // 'static' | 'field'
+	cur = nextToken()
+	compileToken(cur) // type
+	cur = nextToken()
+	compileToken(cur) // varName
+	cur = nextToken()
+	for cur.str == COMMA {
+		compileToken(cur) // ','
+		cur = skip(cur, COMMA)
+		compileToken(cur) // varName
+		cur = nextToken()
 	}
-	compileToken(tok) // ';'
+	compileToken(cur) // ';'
+	cur = skip(cur, SEMICOLON)
 	results = append(results, "</classVarDec>")
 }
 
