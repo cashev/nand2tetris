@@ -92,7 +92,7 @@ func compileSubroutine() {
 	compileToken(cur) // '('
 	cur = skip(cur, LPAREN)
 
-	cur = compileParameterList(cur)
+	compileParameterList() // parameterList
 
 	compileToken(cur) // ')'
 	cur = skip(cur, RPAREN)
@@ -129,23 +129,25 @@ func compileSubroutine() {
 }
 
 // parameterList = ((type varName) (',' type varName)* )?
-func compileParameterList(now token) token {
+func compileParameterList() {
 	results = append(results, "<parameterList>")
-	if now.str == RPAREN {
+	if equal(cur, RPAREN) {
 		results = append(results, "</parameterList>")
-		return now
+		return
 	}
-	compileToken(now)         // type
-	compileToken(nextToken()) // varName
-	tok := nextToken()
-	for tok.str == COMMA {
-		compileToken(tok)         // ','
-		compileToken(nextToken()) // type
-		compileToken(nextToken()) // varName
-		tok = nextToken()
+	compileToken(cur) // type
+	cur = nextToken()
+	compileToken(cur) // varName
+	cur = nextToken()
+	for equal(cur, COMMA) {
+		compileToken(cur) // ','
+		cur = skip(cur, COMMA)
+		compileToken(cur) // type
+		cur = nextToken()
+		compileToken(cur) // varName
+		cur = nextToken()
 	}
-	results = append(results, "</parameterList>")
-	return tok
+	return
 }
 
 func compileVarDec() {
