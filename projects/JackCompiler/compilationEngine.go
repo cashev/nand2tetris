@@ -161,33 +161,33 @@ func compileStatements() token {
 	// 						 whileStatement | doStatement |
 	// 						 returnStatement
 	loop := true
-	tok := cur
 	for {
-		switch tok.str {
+		switch cur.str {
 		case LET:
-			compileLet(tok)
+			compileLet()
 		case IF:
-			compileIf(tok)
+			compileIf()
 		case WHILE:
-			compileWhile(tok)
+			compileWhile()
 		case DO:
-			compileDo(tok)
+			compileDo()
 		case RETURN:
-			compileReturn(tok)
+			compileReturn()
 		default:
 			loop = false
 		}
 		if !loop {
 			break
 		}
-		tok = nextToken()
+		cur = nextToken()
 	}
 	results = append(results, "</statements>")
-	return tok
+	return cur
 }
 
 // doStatement = 'do' subroutineCall ';'
-func compileDo(now token) {
+func compileDo() {
+	now := cur
 	results = append(results, "<doStatement>")
 	compileToken(now)         // do
 	compileToken(nextToken()) // identifier
@@ -213,7 +213,8 @@ func compileDo(now token) {
 }
 
 // letstatement = 'let' varName ('[' expr ']')? '=' expr ';'
-func compileLet(now token) {
+func compileLet() {
+	now := cur
 	results = append(results, "<letStatement>")
 	compileToken(now)         // let
 	compileToken(nextToken()) // varName
@@ -232,7 +233,8 @@ func compileLet(now token) {
 }
 
 // whileStatement = 'while' '(' expr ')' '{' statements '}'
-func compileWhile(now token) {
+func compileWhile() {
+	now := cur
 	results = append(results, "<whileStatement>")
 	compileToken(now)         // 'while'
 	compileToken(nextToken()) // '('
@@ -246,7 +248,8 @@ func compileWhile(now token) {
 }
 
 // returnStatement = 'return' expr? ';'
-func compileReturn(now token) {
+func compileReturn() {
+	now := cur
 	results = append(results, "<returnStatement>")
 	compileToken(now) // 'return'
 	tok := nextToken()
@@ -259,7 +262,8 @@ func compileReturn(now token) {
 
 // ifStatement = 'if' '(' expr ')' '{' statements '}'
 // 							 ('else' '{' statements '}')?
-func compileIf(now token) {
+func compileIf() {
+	now := cur
 	results = append(results, "<ifStatement>")
 	compileToken(now)         // 'if'
 	compileToken(nextToken()) // '('
