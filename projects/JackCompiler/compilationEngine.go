@@ -161,7 +161,7 @@ func compileStatements() token {
 	// 						 whileStatement | doStatement |
 	// 						 returnStatement
 	loop := true
-	for {
+	for loop {
 		switch cur.str {
 		case LET:
 			compileLet()
@@ -176,10 +176,6 @@ func compileStatements() token {
 		default:
 			loop = false
 		}
-		if !loop {
-			break
-		}
-		cur = nextToken()
 	}
 	results = append(results, "</statements>")
 	return cur
@@ -207,7 +203,10 @@ func compileDo() {
 		next := compileExpressionList(nextToken())
 		compileToken(next) // ')'
 	}
-	compileToken(nextToken()) // ';'
+	tok = nextToken()
+	compileToken(tok) // ';'
+	cur = tok
+	cur = skip(cur, SEMICOLON)
 
 	results = append(results, "</doStatement>")
 }
@@ -228,6 +227,8 @@ func compileLet() {
 	compileToken(tok) // '='
 	tok1 := compileExpression(nextToken())
 	compileToken(tok1) // ';'
+	cur = tok1
+	cur = skip(cur, SEMICOLON)
 
 	results = append(results, "</letStatement>")
 }
@@ -244,6 +245,8 @@ func compileWhile() {
 	cur = nextToken()
 	tok = compileStatements()
 	compileToken(tok) // '}'
+	cur = tok
+	cur = skip(cur, RBRACE)
 	results = append(results, "</whileStatement>")
 }
 
@@ -257,6 +260,8 @@ func compileReturn() {
 		tok = compileExpression(tok)
 	}
 	compileToken(tok) // ';'
+	cur = tok
+	cur = skip(cur, SEMICOLON)
 	results = append(results, "</returnStatement>")
 }
 
@@ -280,6 +285,8 @@ func compileIf() {
 		tok = compileStatements()
 		compileToken(tok) // '}'
 	}
+	cur = tok
+	cur = skip(cur, RBRACE)
 	results = append(results, "</ifStatement>")
 }
 
