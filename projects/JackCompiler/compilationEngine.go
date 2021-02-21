@@ -120,7 +120,7 @@ func compileSubroutine() {
 		cur = skip(cur, SEMICOLON)
 		results = append(results, "</varDec>")
 	}
-	cur = compileStatements(cur)
+	cur = compileStatements()
 
 	compileToken(cur) // '}'
 	cur = skip(cur, RBRACE)
@@ -155,13 +155,13 @@ func compileVarDec() {
 }
 
 // statements = statement*
-func compileStatements(now token) token {
+func compileStatements() token {
 	results = append(results, "<statements>")
 	// statement = letStatement | ifStatement |
 	// 						 whileStatement | doStatement |
 	// 						 returnStatement
 	loop := true
-	tok := now
+	tok := cur
 	for {
 		switch tok.str {
 		case LET:
@@ -239,7 +239,8 @@ func compileWhile(now token) {
 	tok := compileExpression(nextToken())
 	compileToken(tok)         // ')'
 	compileToken(nextToken()) // '{'
-	tok = compileStatements(nextToken())
+	cur = nextToken()
+	tok = compileStatements()
 	compileToken(tok) // '}'
 	results = append(results, "</whileStatement>")
 }
@@ -265,12 +266,14 @@ func compileIf(now token) {
 	tok := compileExpression(nextToken())
 	compileToken(tok)         // ')'
 	compileToken(nextToken()) // '{'
-	tok = compileStatements(nextToken())
+	cur = nextToken()
+	tok = compileStatements()
 	compileToken(tok) // '}'
 	if readNextToken().str == ELSE {
 		compileToken(nextToken()) // 'else'
 		compileToken(nextToken()) // '{'
-		tok = compileStatements(nextToken())
+		cur = nextToken()
+		tok = compileStatements()
 		compileToken(tok) // '}'
 	}
 	results = append(results, "</ifStatement>")
