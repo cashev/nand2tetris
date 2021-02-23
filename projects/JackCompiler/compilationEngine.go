@@ -192,7 +192,7 @@ func compileDo() {
 		// subroutineCall = subroutineName '(' exprList ')'
 		compileToken(cur) // '('
 		cur = skip(cur, LPAREN)
-		cur = compileExpressionList()
+		compileExpressionList()
 		compileToken(cur) // ')'
 		cur = skip(cur, RPAREN)
 	}
@@ -205,7 +205,7 @@ func compileDo() {
 		cur = nextToken()
 		compileToken(cur) // '('
 		cur = nextToken()
-		cur = compileExpressionList()
+		compileExpressionList()
 		compileToken(cur)
 		cur = skip(cur, RPAREN) // ')'
 	}
@@ -341,7 +341,7 @@ func compileTerm() {
 			// subroutineCall = subroutineName '(' exprList ')'
 			compileToken(cur) // '('
 			cur = skip(cur, LPAREN)
-			cur = compileExpressionList()
+			compileExpressionList()
 			compileToken(cur) // ')'
 			cur = skip(cur, RPAREN)
 		}
@@ -354,7 +354,7 @@ func compileTerm() {
 			cur = nextToken()
 			compileToken(cur) // '('
 			cur = skip(cur, LPAREN)
-			cur = compileExpressionList()
+			compileExpressionList()
 			compileToken(cur) // ')'
 			cur = skip(cur, RPAREN)
 		}
@@ -377,25 +377,19 @@ func compileTerm() {
 }
 
 // exprList = (expr (',' expr)* )?
-func compileExpressionList() token {
+func compileExpressionList() {
 	results = append(results, "<expressionList>")
-	now := cur
-	if now.str == RPAREN {
+	if equal(cur, RPAREN) {
 		results = append(results, "</expressionList>")
-		return now
+		return
 	}
-	cur = now
 	compileExpression()
-
-	tok := cur
-	for tok.str == COMMA {
-		compileToken(tok) // ','
-		cur = nextToken()
+	for equal(cur, COMMA) {
+		compileToken(cur) // '.'
+		cur = skip(cur, COMMA)
 		compileExpression()
-		tok = cur
 	}
 	results = append(results, "</expressionList>")
-	return tok
 }
 
 func compileToken(tok token) {
