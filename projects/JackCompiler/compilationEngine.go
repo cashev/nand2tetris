@@ -224,13 +224,13 @@ func compileLet() {
 	if equal(cur, LBRACKET) {
 		compileToken(cur) // '['
 		cur = skip(cur, LBRACKET)
-		cur = compileExpression(cur)
+		cur = compileExpression()
 		compileToken(cur) // ']'
 		cur = skip(cur, RBRACKET)
 	}
 	compileToken(cur) // '='
 	cur = skip(cur, EQUAL)
-	cur = compileExpression(cur)
+	cur = compileExpression()
 	compileToken(cur) // ';'
 	cur = skip(cur, SEMICOLON)
 	results = append(results, "</letStatement>")
@@ -243,7 +243,7 @@ func compileWhile() {
 	cur = skip(cur, WHILE)
 	compileToken(cur) // '('
 	cur = skip(cur, LPAREN)
-	cur = compileExpression(cur)
+	cur = compileExpression()
 	compileToken(cur) // ')'
 	cur = skip(cur, RPAREN)
 	compileToken(cur) // '{'
@@ -260,7 +260,7 @@ func compileReturn() {
 	compileToken(cur) // 'return'
 	cur = skip(cur, RETURN)
 	if !equal(cur, SEMICOLON) {
-		cur = compileExpression(cur)
+		cur = compileExpression()
 	}
 	compileToken(cur) // ';'
 	cur = skip(cur, SEMICOLON)
@@ -275,7 +275,7 @@ func compileIf() {
 	cur = skip(cur, IF)
 	compileToken(cur) // '('
 	cur = skip(cur, LPAREN)
-	cur = compileExpression(cur)
+	cur = compileExpression()
 	compileToken(cur) // ')'
 	cur = skip(cur, RPAREN)
 	compileToken(cur) // '{'
@@ -296,9 +296,9 @@ func compileIf() {
 }
 
 // expr = term (op term)*
-func compileExpression(now token) token {
+func compileExpression() token {
 	results = append(results, "<expression>")
-	compileTerm(now) // term
+	compileTerm(cur) // term
 	tok := nextToken()
 	for isOp(tok.str) {
 		compileToken(tok)        // op
@@ -333,7 +333,8 @@ func compileTerm(now token) {
 		if readNextToken().str == LBRACKET {
 			// varName '[' expr ']'
 			compileToken(nextToken()) // '['
-			tok := compileExpression(nextToken())
+			cur = nextToken()
+			tok := compileExpression()
 			compileToken(tok) // ']'
 		}
 		if readNextToken().str == LPAREN {
@@ -359,7 +360,8 @@ func compileTerm(now token) {
 	} else if now.str == LPAREN {
 		// '(' expr ')'
 		compileToken(now) // '('
-		tok := compileExpression(nextToken())
+		cur = nextToken()
+		tok := compileExpression()
 		compileToken(tok) // ')'
 	} else {
 		compileToken(now)
@@ -374,12 +376,14 @@ func compileExpressionList(now token) token {
 		results = append(results, "</expressionList>")
 		return now
 	}
-	tok1 := compileExpression(now)
+	cur = now
+	tok1 := compileExpression()
 
 	tok := tok1
 	for tok.str == COMMA {
 		compileToken(tok) // ','
-		tok2 := compileExpression(nextToken())
+		cur = nextToken()
+		tok2 := compileExpression()
 		tok = tok2
 	}
 	results = append(results, "</expressionList>")
