@@ -298,11 +298,12 @@ func compileIf() {
 // expr = term (op term)*
 func compileExpression() {
 	results = append(results, "<expression>")
-	compileTerm(cur) // term
+	compileTerm() // term
 	tok := nextToken()
 	for isOperator(tok.str) {
-		compileToken(tok)        // op
-		compileTerm(nextToken()) // term
+		compileToken(tok) // op
+		cur = nextToken()
+		compileTerm() // term
 		tok = nextToken()
 	}
 	results = append(results, "</expression>")
@@ -327,7 +328,8 @@ func isUnaryOperator(str string) bool {
 // term = integerConstant | stringConstant | keywordConstant
 // 				| varName | varName '[' expr ']' | subroutineCall
 // 				| '(' expr ')' | unaryOp term
-func compileTerm(now token) {
+func compileTerm() {
+	now := cur
 	results = append(results, "<term>")
 	if now.kind == IDENTIFIER {
 		compileToken(now)
@@ -358,8 +360,9 @@ func compileTerm(now token) {
 		}
 
 	} else if isUnaryOperator(now.str) {
-		compileToken(now)        // uparyOp
-		compileTerm(nextToken()) // term
+		compileToken(now) // uparyOp
+		cur = nextToken()
+		compileTerm() // term
 	} else if now.str == LPAREN {
 		// '(' expr ')'
 		compileToken(now) // '('
