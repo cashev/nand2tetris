@@ -184,7 +184,7 @@ func compileDo() {
 	consume(DO)
 	compileToken(cur) // subroutineName | (className | varName)
 	cur = nextToken()
-	if cur.str == LPAREN {
+	if equal(cur, LPAREN) {
 		// subroutineCall = subroutineName '(' exprList ')'
 		compileToken(cur) // '('
 		consume(LPAREN)
@@ -192,7 +192,7 @@ func compileDo() {
 		compileToken(cur) // ')'
 		consume(RPAREN)
 	}
-	if cur.str == PERIOD {
+	if equal(cur, PERIOD) {
 		// subroutineCall = (className | varName) '.' subroutineName
 		// 									'(' exprList ')'
 		compileToken(cur) // '.'
