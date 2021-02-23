@@ -192,7 +192,7 @@ func compileDo() {
 		// subroutineCall = subroutineName '(' exprList ')'
 		compileToken(cur) // '('
 		cur = skip(cur, LPAREN)
-		cur = compileExpressionList(cur)
+		cur = compileExpressionList()
 		compileToken(cur) // ')'
 		cur = skip(cur, RPAREN)
 	}
@@ -205,7 +205,7 @@ func compileDo() {
 		cur = nextToken()
 		compileToken(cur) // '('
 		cur = nextToken()
-		cur = compileExpressionList(cur)
+		cur = compileExpressionList()
 		compileToken(cur)
 		cur = skip(cur, RPAREN) // ')'
 	}
@@ -340,7 +340,8 @@ func compileTerm(now token) {
 		if readNextToken().str == LPAREN {
 			// subroutineCall = subroutineName '(' exprList ')'
 			compileToken(nextToken()) // '('
-			next := compileExpressionList(nextToken())
+			cur = nextToken()
+			next := compileExpressionList()
 			compileToken(next) // ')'
 
 		}
@@ -350,7 +351,8 @@ func compileTerm(now token) {
 			compileToken(nextToken()) // '.'
 			compileToken(nextToken()) // subroutineName
 			compileToken(nextToken()) // '('
-			next := compileExpressionList(nextToken())
+			cur = nextToken()
+			next := compileExpressionList()
 			compileToken(next) // ')'
 		}
 
@@ -370,8 +372,9 @@ func compileTerm(now token) {
 }
 
 // exprList = (expr (',' expr)* )?
-func compileExpressionList(now token) token {
+func compileExpressionList() token {
 	results = append(results, "<expressionList>")
+	now := cur
 	if now.str == RPAREN {
 		results = append(results, "</expressionList>")
 		return now
