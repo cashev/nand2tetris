@@ -216,23 +216,23 @@ func compileDo() {
 
 // letstatement = 'let' varName ('[' expr ']')? '=' expr ';'
 func compileLet() {
-	now := cur
 	results = append(results, "<letStatement>")
-	compileToken(now)         // let
-	compileToken(nextToken()) // varName
-	tok := nextToken()
-	if tok.str == LBRACKET {
-		compileToken(tok) // '['
-		tok1 := compileExpression(nextToken())
-		compileToken(tok1) // ']'
-		tok = nextToken()
+	compileToken(cur) // let
+	cur = skip(cur, LET)
+	compileToken(cur) // varName
+	cur = nextToken()
+	if equal(cur, LBRACKET) {
+		compileToken(cur) // '['
+		cur = skip(cur, LBRACKET)
+		cur = compileExpression(cur)
+		compileToken(cur) // ']'
+		cur = skip(cur, RBRACKET)
 	}
-	compileToken(tok) // '='
-	tok1 := compileExpression(nextToken())
-	compileToken(tok1) // ';'
-	cur = tok1
+	compileToken(cur) // '='
+	cur = skip(cur, EQUAL)
+	cur = compileExpression(cur)
+	compileToken(cur) // ';'
 	cur = skip(cur, SEMICOLON)
-
 	results = append(results, "</letStatement>")
 }
 
