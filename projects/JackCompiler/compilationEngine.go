@@ -364,6 +364,7 @@ func compileTerm() {
 		compileToken(cur) // ')'
 		consume(RPAREN)
 	} else {
+		// integerConstant | stringConstant | keywordConsant
 		compileToken(cur)
 		cur = nextToken()
 	}
