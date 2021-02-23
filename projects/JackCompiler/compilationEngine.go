@@ -300,7 +300,7 @@ func compileExpression() token {
 	results = append(results, "<expression>")
 	compileTerm(cur) // term
 	tok := nextToken()
-	for isOp(tok.str) {
+	for isOperator(tok.str) {
 		compileToken(tok)        // op
 		compileTerm(nextToken()) // term
 		tok = nextToken()
@@ -309,7 +309,7 @@ func compileExpression() token {
 	return tok
 }
 
-func isOp(str string) bool {
+func isOperator(str string) bool {
 	ops := []string{PLUS, MINUS, ASTERISK, SLASH, AND, OR, LT, RT, EQUAL}
 	for _, op := range ops {
 		if op == str {
@@ -319,7 +319,7 @@ func isOp(str string) bool {
 	return false
 }
 
-func isUnaryOp(str string) bool {
+func isUnaryOperator(str string) bool {
 	return str == "-" || str == "~"
 }
 
@@ -356,7 +356,7 @@ func compileTerm(now token) {
 			compileToken(next) // ')'
 		}
 
-	} else if isUnaryOp(now.str) {
+	} else if isUnaryOperator(now.str) {
 		compileToken(now)        // uparyOp
 		compileTerm(nextToken()) // term
 	} else if now.str == LPAREN {
