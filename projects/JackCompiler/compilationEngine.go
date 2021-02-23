@@ -120,7 +120,7 @@ func compileSubroutine() {
 		consume(SEMICOLON)
 		results = append(results, "</varDec>")
 	}
-	cur = compileStatements()
+	compileStatements()
 
 	compileToken(cur) // '}'
 	consume(RBRACE)
@@ -147,11 +147,10 @@ func compileParameterList() {
 		compileToken(cur) // varName
 		cur = nextToken()
 	}
-	return
 }
 
 // statements = statement*
-func compileStatements() token {
+func compileStatements() {
 	results = append(results, "<statements>")
 	// statement = letStatement | ifStatement |
 	// 						 whileStatement | doStatement |
@@ -174,7 +173,6 @@ func compileStatements() token {
 		}
 	}
 	results = append(results, "</statements>")
-	return cur
 }
 
 // doStatement = 'do' subroutineCall ';'
