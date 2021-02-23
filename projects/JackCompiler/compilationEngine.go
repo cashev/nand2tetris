@@ -270,25 +270,28 @@ func compileReturn() {
 // ifStatement = 'if' '(' expr ')' '{' statements '}'
 // 							 ('else' '{' statements '}')?
 func compileIf() {
-	now := cur
 	results = append(results, "<ifStatement>")
-	compileToken(now)         // 'if'
-	compileToken(nextToken()) // '('
-	tok := compileExpression(nextToken())
-	compileToken(tok)         // ')'
-	compileToken(nextToken()) // '{'
-	cur = nextToken()
-	tok = compileStatements()
-	compileToken(tok) // '}'
-	if readNextToken().str == ELSE {
-		compileToken(nextToken()) // 'else'
-		compileToken(nextToken()) // '{'
-		cur = nextToken()
-		tok = compileStatements()
-		compileToken(tok) // '}'
-	}
-	cur = tok
+	compileToken(cur) // 'if'
+	cur = skip(cur, IF)
+	compileToken(cur) // '('
+	cur = skip(cur, LPAREN)
+	cur = compileExpression(cur)
+	compileToken(cur) // ')'
+	cur = skip(cur, RPAREN)
+	compileToken(cur) // '{'
+	cur = skip(cur, LBRACE)
+	compileStatements()
+	compileToken(cur) // '}'
 	cur = skip(cur, RBRACE)
+	if equal(cur, ELSE) {
+		compileToken(cur) // 'else'
+		cur = skip(cur, ELSE)
+		compileToken(cur) // '{'
+		cur = skip(cur, LBRACE)
+		compileStatements()
+		compileToken(cur) // '}'
+		cur = skip(cur, RBRACE)
+	}
 	results = append(results, "</ifStatement>")
 }
 
