@@ -299,12 +299,10 @@ func compileIf() {
 func compileExpression() {
 	results = append(results, "<expression>")
 	compileTerm() // term
-	cur = nextToken()
 	for isOperator(cur.str) {
 		compileToken(cur) // op
 		cur = nextToken()
 		compileTerm() // term
-		cur = nextToken()
 	}
 	results = append(results, "</expression>")
 }
@@ -327,48 +325,53 @@ func isUnaryOperator(str string) bool {
 // 				| varName | varName '[' expr ']' | subroutineCall
 // 				| '(' expr ')' | unaryOp term
 func compileTerm() {
-	now := cur
 	results = append(results, "<term>")
-	if now.kind == IDENTIFIER {
-		compileToken(now)
-		if readNextToken().str == LBRACKET {
-			// varName '[' expr ']'
-			compileToken(nextToken()) // '['
-			cur = nextToken()
+	if cur.kind == IDENTIFIER {
+		compileToken(cur)
+		cur = nextToken()
+		if equal(cur, LBRACKET) {
+			// varName | varName '[' expr ']'
+			compileToken(cur) // '['
+			cur = skip(cur, LBRACKET)
 			compileExpression()
 			compileToken(cur) // ']'
+			cur = skip(cur, RBRACKET)
 		}
-		if readNextToken().str == LPAREN {
+		if equal(cur, LPAREN) {
 			// subroutineCall = subroutineName '(' exprList ')'
-			compileToken(nextToken()) // '('
-			cur = nextToken()
-			next := compileExpressionList()
-			compileToken(next) // ')'
-
+			compileToken(cur) // '('
+			cur = skip(cur, LPAREN)
+			cur = compileExpressionList()
+			compileToken(cur) // ')'
+			cur = skip(cur, RPAREN)
 		}
-		if readNextToken().str == PERIOD {
+		if equal(cur, PERIOD) {
 			// subroutineCall = (className | varName) '.' subroutineName
 			// 									'(' exprList ')'
-			compileToken(nextToken()) // '.'
-			compileToken(nextToken()) // subroutineName
-			compileToken(nextToken()) // '('
+			compileToken(cur) // '.'
+			cur = skip(cur, PERIOD)
+			compileToken(cur) // subroutineName
 			cur = nextToken()
-			next := compileExpressionList()
-			compileToken(next) // ')'
+			compileToken(cur) // '('
+			cur = skip(cur, LPAREN)
+			cur = compileExpressionList()
+			compileToken(cur) // ')'
+			cur = skip(cur, RPAREN)
 		}
-
-	} else if isUnaryOperator(now.str) {
-		compileToken(now) // uparyOp
+	} else if isUnaryOperator(cur.str) {
+		compileToken(cur) // unaryOperator
 		cur = nextToken()
 		compileTerm() // term
-	} else if now.str == LPAREN {
+	} else if equal(cur, LPAREN) {
 		// '(' expr ')'
-		compileToken(now) // '('
-		cur = nextToken()
+		compileToken(cur) // '('
+		cur = skip(cur, LPAREN)
 		compileExpression()
 		compileToken(cur) // ')'
+		cur = skip(cur, RPAREN)
 	} else {
-		compileToken(now)
+		compileToken(cur)
+		cur = nextToken()
 	}
 	results = append(results, "</term>")
 }
