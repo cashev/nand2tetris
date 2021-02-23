@@ -299,16 +299,14 @@ func compileIf() {
 func compileExpression() {
 	results = append(results, "<expression>")
 	compileTerm() // term
-	tok := nextToken()
-	for isOperator(tok.str) {
-		compileToken(tok) // op
+	cur = nextToken()
+	for isOperator(cur.str) {
+		compileToken(cur) // op
 		cur = nextToken()
 		compileTerm() // term
-		tok = nextToken()
+		cur = nextToken()
 	}
 	results = append(results, "</expression>")
-	cur = tok
-	return
 }
 
 func isOperator(str string) bool {
