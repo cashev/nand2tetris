@@ -256,15 +256,13 @@ func compileWhile() {
 
 // returnStatement = 'return' expr? ';'
 func compileReturn() {
-	now := cur
 	results = append(results, "<returnStatement>")
-	compileToken(now) // 'return'
-	tok := nextToken()
-	if tok.str != SEMICOLON {
-		tok = compileExpression(tok)
+	compileToken(cur) // 'return'
+	cur = skip(cur, RETURN)
+	if !equal(cur, SEMICOLON) {
+		cur = compileExpression(cur)
 	}
-	compileToken(tok) // ';'
-	cur = tok
+	compileToken(cur) // ';'
 	cur = skip(cur, SEMICOLON)
 	results = append(results, "</returnStatement>")
 }
