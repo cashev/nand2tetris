@@ -35,11 +35,11 @@ func compile(toks []token) []string {
 func compileClass() {
 	results = append(results, "<class>")
 	compileToken(cur) // class
-	cur = skip(cur, CLASS)
+	consume(CLASS)
 	compileIdentifier(cur) // className
-	cur = nextToken()
+	consumeIdentifier()
 	compileToken(cur) // '{'
-	cur = skip(cur, LBRACE)
+	consume(LBRACE)
 
 	for !equal(cur, RBRACE) {
 		if equal(cur, STATIC) || equal(cur, FIELD) {
@@ -50,7 +50,7 @@ func compileClass() {
 		}
 	}
 	compileToken(cur)
-	cur = skip(cur, RBRACE)
+	consume(RBRACE)
 	results = append(results, "</class>")
 }
 
@@ -62,15 +62,15 @@ func compileClassVarDec() {
 	compileToken(cur) // type
 	cur = nextToken()
 	compileToken(cur) // varName
-	cur = nextToken()
+	consumeIdentifier()
 	for cur.str == COMMA {
 		compileToken(cur) // ','
-		cur = skip(cur, COMMA)
+		consume(COMMA)
 		compileToken(cur) // varName
 		cur = nextToken()
 	}
 	compileToken(cur) // ';'
-	cur = skip(cur, SEMICOLON)
+	consume(SEMICOLON)
 	results = append(results, "</classVarDec>")
 }
 
@@ -90,40 +90,40 @@ func compileSubroutine() {
 	compileToken(cur) // subroutineName
 	cur = nextToken()
 	compileToken(cur) // '('
-	cur = skip(cur, LPAREN)
+	consume(LPAREN)
 
 	compileParameterList() // parameterList
 
 	compileToken(cur) // ')'
-	cur = skip(cur, RPAREN)
+	consume(RPAREN)
 
 	// subroutineBody = '{' varDec* statements '}'
 	results = append(results, "<subroutineBody>")
 	compileToken(cur) // '{'
-	cur = skip(cur, LBRACE)
+	consume(LBRACE)
 	for equal(cur, VAR) {
 		results = append(results, "<varDec>")
 		// varDec = 'var' type varName (',' varName)* ';'
 		compileToken(cur) // var
-		cur = skip(cur, VAR)
+		consume(VAR)
 		compileToken(cur) // type
 		cur = nextToken()
 		compileToken((cur)) // varName
 		cur = nextToken()
 		for equal(cur, COMMA) {
 			compileToken(cur) // ','
-			cur = skip(cur, COMMA)
+			consume(COMMA)
 			compileToken((cur)) // varName
 			cur = nextToken()
 		}
 		compileToken(cur) // ';'
-		cur = skip(cur, SEMICOLON)
+		consume(SEMICOLON)
 		results = append(results, "</varDec>")
 	}
 	cur = compileStatements()
 
 	compileToken(cur) // '}'
-	cur = skip(cur, RBRACE)
+	consume(RBRACE)
 	results = append(results, "</subroutineBody>")
 	results = append(results, "</subroutineDec>")
 }
@@ -141,17 +141,13 @@ func compileParameterList() {
 	cur = nextToken()
 	for equal(cur, COMMA) {
 		compileToken(cur) // ','
-		cur = skip(cur, COMMA)
+		consume(COMMA)
 		compileToken(cur) // type
 		cur = nextToken()
 		compileToken(cur) // varName
 		cur = nextToken()
 	}
 	return
-}
-
-func compileVarDec() {
-
 }
 
 // statements = statement*
@@ -185,32 +181,32 @@ func compileStatements() token {
 func compileDo() {
 	results = append(results, "<doStatement>")
 	compileToken(cur) // 'do'
-	cur = skip(cur, DO)
+	consume(DO)
 	compileToken(cur) // subroutineName | (className | varName)
 	cur = nextToken()
 	if cur.str == LPAREN {
 		// subroutineCall = subroutineName '(' exprList ')'
 		compileToken(cur) // '('
-		cur = skip(cur, LPAREN)
+		consume(LPAREN)
 		compileExpressionList()
 		compileToken(cur) // ')'
-		cur = skip(cur, RPAREN)
+		consume(RPAREN)
 	}
 	if cur.str == PERIOD {
 		// subroutineCall = (className | varName) '.' subroutineName
 		// 									'(' exprList ')'
 		compileToken(cur) // '.'
-		cur = skip(cur, PERIOD)
+		consume(PERIOD)
 		compileToken(cur) // identifier
 		cur = nextToken()
 		compileToken(cur) // '('
 		cur = nextToken()
 		compileExpressionList()
-		compileToken(cur)
-		cur = skip(cur, RPAREN) // ')'
+		compileToken(cur) // ')'
+		consume(RPAREN)
 	}
 	compileToken(cur) // ';'
-	cur = skip(cur, SEMICOLON)
+	consume(SEMICOLON)
 	results = append(results, "</doStatement>")
 }
 
@@ -218,21 +214,21 @@ func compileDo() {
 func compileLet() {
 	results = append(results, "<letStatement>")
 	compileToken(cur) // let
-	cur = skip(cur, LET)
+	consume(LET)
 	compileToken(cur) // varName
 	cur = nextToken()
 	if equal(cur, LBRACKET) {
 		compileToken(cur) // '['
-		cur = skip(cur, LBRACKET)
+		consume(LBRACKET)
 		compileExpression()
 		compileToken(cur) // ']'
-		cur = skip(cur, RBRACKET)
+		consume(RBRACKET)
 	}
 	compileToken(cur) // '='
-	cur = skip(cur, EQUAL)
+	consume(EQUAL)
 	compileExpression()
 	compileToken(cur) // ';'
-	cur = skip(cur, SEMICOLON)
+	consume(SEMICOLON)
 	results = append(results, "</letStatement>")
 }
 
@@ -240,17 +236,17 @@ func compileLet() {
 func compileWhile() {
 	results = append(results, "<whileStatement>")
 	compileToken(cur) // 'while'
-	cur = skip(cur, WHILE)
+	consume(WHILE)
 	compileToken(cur) // '('
-	cur = skip(cur, LPAREN)
+	consume(LPAREN)
 	compileExpression()
 	compileToken(cur) // ')'
-	cur = skip(cur, RPAREN)
+	consume(RPAREN)
 	compileToken(cur) // '{'
-	cur = skip(cur, LBRACE)
+	consume(LBRACE)
 	compileStatements()
 	compileToken(cur) // '}'
-	cur = skip(cur, RBRACE)
+	consume(RBRACE)
 	results = append(results, "</whileStatement>")
 }
 
@@ -258,12 +254,12 @@ func compileWhile() {
 func compileReturn() {
 	results = append(results, "<returnStatement>")
 	compileToken(cur) // 'return'
-	cur = skip(cur, RETURN)
+	consume(RETURN)
 	if !equal(cur, SEMICOLON) {
 		compileExpression()
 	}
 	compileToken(cur) // ';'
-	cur = skip(cur, SEMICOLON)
+	consume(SEMICOLON)
 	results = append(results, "</returnStatement>")
 }
 
@@ -272,25 +268,25 @@ func compileReturn() {
 func compileIf() {
 	results = append(results, "<ifStatement>")
 	compileToken(cur) // 'if'
-	cur = skip(cur, IF)
+	consume(IF)
 	compileToken(cur) // '('
-	cur = skip(cur, LPAREN)
+	consume(LPAREN)
 	compileExpression()
 	compileToken(cur) // ')'
-	cur = skip(cur, RPAREN)
+	consume(RPAREN)
 	compileToken(cur) // '{'
-	cur = skip(cur, LBRACE)
+	consume(LBRACE)
 	compileStatements()
 	compileToken(cur) // '}'
-	cur = skip(cur, RBRACE)
+	consume(RBRACE)
 	if equal(cur, ELSE) {
 		compileToken(cur) // 'else'
-		cur = skip(cur, ELSE)
+		consume(ELSE)
 		compileToken(cur) // '{'
-		cur = skip(cur, LBRACE)
+		consume(LBRACE)
 		compileStatements()
 		compileToken(cur) // '}'
-		cur = skip(cur, RBRACE)
+		consume(RBRACE)
 	}
 	results = append(results, "</ifStatement>")
 }
@@ -332,31 +328,31 @@ func compileTerm() {
 		if equal(cur, LBRACKET) {
 			// varName | varName '[' expr ']'
 			compileToken(cur) // '['
-			cur = skip(cur, LBRACKET)
+			consume(LBRACKET)
 			compileExpression()
 			compileToken(cur) // ']'
-			cur = skip(cur, RBRACKET)
+			consume(RBRACKET)
 		}
 		if equal(cur, LPAREN) {
 			// subroutineCall = subroutineName '(' exprList ')'
 			compileToken(cur) // '('
-			cur = skip(cur, LPAREN)
+			consume(LPAREN)
 			compileExpressionList()
 			compileToken(cur) // ')'
-			cur = skip(cur, RPAREN)
+			consume(RPAREN)
 		}
 		if equal(cur, PERIOD) {
 			// subroutineCall = (className | varName) '.' subroutineName
 			// 									'(' exprList ')'
 			compileToken(cur) // '.'
-			cur = skip(cur, PERIOD)
+			consume(PERIOD)
 			compileToken(cur) // subroutineName
 			cur = nextToken()
 			compileToken(cur) // '('
-			cur = skip(cur, LPAREN)
+			consume(LPAREN)
 			compileExpressionList()
 			compileToken(cur) // ')'
-			cur = skip(cur, RPAREN)
+			consume(RPAREN)
 		}
 	} else if isUnaryOperator(cur.str) {
 		compileToken(cur) // unaryOperator
@@ -365,10 +361,10 @@ func compileTerm() {
 	} else if equal(cur, LPAREN) {
 		// '(' expr ')'
 		compileToken(cur) // '('
-		cur = skip(cur, LPAREN)
+		consume(LPAREN)
 		compileExpression()
 		compileToken(cur) // ')'
-		cur = skip(cur, RPAREN)
+		consume(RPAREN)
 	} else {
 		compileToken(cur)
 		cur = nextToken()
@@ -386,7 +382,7 @@ func compileExpressionList() {
 	compileExpression()
 	for equal(cur, COMMA) {
 		compileToken(cur) // '.'
-		cur = skip(cur, COMMA)
+		consume(COMMA)
 		compileExpression()
 	}
 	results = append(results, "</expressionList>")
@@ -412,19 +408,24 @@ func nextToken() token {
 	return tokens[position]
 }
 
-func readNextToken() token {
-	return tokens[position+1]
-}
-
 func equal(tok token, str string) bool {
 	return tok.str == str
 }
 
-func skip(tok token, str string) token {
-	if !equal(tok, str) {
-		msg := fmt.Sprintf("skip error. unexpected token. expected %s", str)
+func consume(str string) {
+	if !equal(cur, str) {
+		msg := fmt.Sprintf("consume error. unexpected token. expected %s", str)
 		panic(msg)
 	}
 	position++
-	return tokens[position]
+	cur = tokens[position]
+}
+
+func consumeIdentifier() {
+	if cur.kind != IDENTIFIER {
+		msg := fmt.Sprintf("consume error. not identifier token. got %s", cur.str)
+		panic(msg)
+	}
+	position++
+	cur = tokens[position]
 }
