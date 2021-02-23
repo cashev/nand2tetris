@@ -183,31 +183,34 @@ func compileStatements() token {
 
 // doStatement = 'do' subroutineCall ';'
 func compileDo() {
-	now := cur
 	results = append(results, "<doStatement>")
-	compileToken(now)         // do
-	compileToken(nextToken()) // identifier
-	tok := nextToken()
-	if tok.str == LPAREN {
+	compileToken(cur) // 'do'
+	cur = skip(cur, DO)
+	compileToken(cur) // subroutineName | (className | varName)
+	cur = nextToken()
+	if cur.str == LPAREN {
 		// subroutineCall = subroutineName '(' exprList ')'
-		compileToken(tok) // '('
-		next := compileExpressionList(nextToken())
-		compileToken(next) // ')'
+		compileToken(cur) // '('
+		cur = skip(cur, LPAREN)
+		cur = compileExpressionList(cur)
+		compileToken(cur) // ')'
+		cur = skip(cur, RPAREN)
 	}
-	if tok.str == PERIOD {
+	if cur.str == PERIOD {
 		// subroutineCall = (className | varName) '.' subroutineName
 		// 									'(' exprList ')'
-		compileToken(tok)         // '.'
-		compileToken(nextToken()) // identifier
-		compileToken(nextToken()) // '('
-		next := compileExpressionList(nextToken())
-		compileToken(next) // ')'
+		compileToken(cur) // '.'
+		cur = skip(cur, PERIOD)
+		compileToken(cur) // identifier
+		cur = nextToken()
+		compileToken(cur) // '('
+		cur = nextToken()
+		cur = compileExpressionList(cur)
+		compileToken(cur)
+		cur = skip(cur, RPAREN) // ')'
 	}
-	tok = nextToken()
-	compileToken(tok) // ';'
-	cur = tok
+	compileToken(cur) // ';'
 	cur = skip(cur, SEMICOLON)
-
 	results = append(results, "</doStatement>")
 }
 
