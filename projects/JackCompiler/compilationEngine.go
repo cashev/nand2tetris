@@ -238,17 +238,18 @@ func compileLet() {
 
 // whileStatement = 'while' '(' expr ')' '{' statements '}'
 func compileWhile() {
-	now := cur
 	results = append(results, "<whileStatement>")
-	compileToken(now)         // 'while'
-	compileToken(nextToken()) // '('
-	tok := compileExpression(nextToken())
-	compileToken(tok)         // ')'
-	compileToken(nextToken()) // '{'
-	cur = nextToken()
-	tok = compileStatements()
-	compileToken(tok) // '}'
-	cur = tok
+	compileToken(cur) // 'while'
+	cur = skip(cur, WHILE)
+	compileToken(cur) // '('
+	cur = skip(cur, LPAREN)
+	cur = compileExpression(cur)
+	compileToken(cur) // ')'
+	cur = skip(cur, RPAREN)
+	compileToken(cur) // '{'
+	cur = skip(cur, LBRACE)
+	compileStatements()
+	compileToken(cur) // '}'
 	cur = skip(cur, RBRACE)
 	results = append(results, "</whileStatement>")
 }
