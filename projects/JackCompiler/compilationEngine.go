@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 var position int
 var tokens []token
@@ -8,8 +11,33 @@ var cur token
 
 var results []string
 
+type identifierKind string
+
+const (
+	iStatic identifierKind = "STATIC"
+	iField  identifierKind = "FIELD"
+	iArg    identifierKind = "ARG"
+	iVar    identifierKind = "VAR"
+	iNone   identifierKind = "NONE"
+)
+
+type identifier struct {
+	name string
+	typ  string
+	kind identifierKind
+}
+
+var symbolTable []identifier
+var subroutineSymbolTable []identifier
+
 const (
 	EOF = "END OF FILE"
+
+	DEFINED = "defined"
+	USED    = "used"
+
+	ARGUMENT   = "argument"
+	SUBROUTINE = "subroutine"
 )
 
 func initializeCompileEngine() {
@@ -17,6 +45,9 @@ func initializeCompileEngine() {
 	tokens = make([]token, 0)
 	cur = token{}
 	results = make([]string, 0)
+
+	symbolTable = make([]identifier, 0)
+	subroutineSymbolTable = make([]identifier, 0)
 }
 
 func compile(toks []token) []string {
@@ -33,10 +64,12 @@ func compile(toks []token) []string {
 
 // class = 'class' className '{' classVarDec* subroutineDec* '}'
 func compileClass() {
+	symbolTable = make([]identifier, 0)
+
 	results = append(results, "<class>")
 	compileToken(cur) // class
 	consume(CLASS)
-	compileIdentifier(cur) // className
+	compileIdentifier(cur, CLASS, DEFINED) // className
 	consumeIdentifier()
 	compileToken(cur) // '{'
 	consume(LBRACE)
@@ -58,15 +91,27 @@ func compileClass() {
 func compileClassVarDec() {
 	results = append(results, "<classVarDec>")
 	compileToken(cur) // 'static' | 'field'
+	category := cur.str
 	cur = nextToken()
 	compileToken(cur) // type
+	typ := cur.str
 	cur = nextToken()
-	compileToken(cur) // varName
+	// varName
+	var iKind identifierKind
+	if category == STATIC {
+		iKind = iStatic
+	} else {
+		iKind = iField
+	}
+	define(cur.str, typ, iKind)
+	compileIdentifier(cur, category, DEFINED)
 	consumeIdentifier()
 	for cur.str == COMMA {
 		compileToken(cur) // ','
 		consume(COMMA)
-		compileToken(cur) // varName
+		// varName
+		define(cur.str, typ, iKind)
+		compileIdentifier(cur, category, DEFINED)
 		cur = nextToken()
 	}
 	compileToken(cur) // ';'
@@ -82,12 +127,15 @@ func isSubroutine(str string) bool {
 //									('void' | type) subroutineName '(' parameterList ')'
 //									subroutineBody
 func compileSubroutine() {
+	subroutineSymbolTable = make([]identifier, 0)
+
 	results = append(results, "<subroutineDec>")
-	compileToken(cur) // subroutineDec
+	compileToken(cur) // 'construct' | 'function' | 'method'
 	cur = nextToken()
-	compileToken(cur) // type
+	compileToken(cur) // 'void' | type
 	cur = nextToken()
-	compileToken(cur) // subroutineName
+	// subroutineName
+	compileIdentifier(cur, SUBROUTINE, DEFINED)
 	cur = nextToken()
 	compileToken(cur) // '('
 	consume(LPAREN)
@@ -104,16 +152,21 @@ func compileSubroutine() {
 	for equal(cur, VAR) {
 		results = append(results, "<varDec>")
 		// varDec = 'var' type varName (',' varName)* ';'
-		compileToken(cur) // var
+		compileToken(cur) // 'var'
 		consume(VAR)
 		compileToken(cur) // type
+		typ := cur.str
 		cur = nextToken()
-		compileToken((cur)) // varName
+		// varName
+		define(cur.str, typ, iVar)
+		compileIdentifier(cur, VAR, DEFINED)
 		cur = nextToken()
 		for equal(cur, COMMA) {
 			compileToken(cur) // ','
 			consume(COMMA)
-			compileToken((cur)) // varName
+			// varName
+			define(cur.str, typ, iVar)
+			compileIdentifier(cur, VAR, DEFINED)
 			cur = nextToken()
 		}
 		compileToken(cur) // ';'
@@ -136,8 +189,11 @@ func compileParameterList() {
 		return
 	}
 	compileToken(cur) // type
+	typ := cur.str
 	cur = nextToken()
-	compileToken(cur) // varName
+	// varName
+	define(cur.str, typ, iArg)
+	compileIdentifier(cur, ARGUMENT, DEFINED)
 	cur = nextToken()
 	for equal(cur, COMMA) {
 		compileToken(cur) // ','
@@ -180,22 +236,36 @@ func compileDo() {
 	results = append(results, "<doStatement>")
 	compileToken(cur) // 'do'
 	consume(DO)
-	compileToken(cur) // subroutineName | (className | varName)
-	cur = nextToken()
-	if equal(cur, LPAREN) {
+	next := readNextToken()
+	if equal(next, LPAREN) {
 		// subroutineCall = subroutineName '(' exprList ')'
-		compileToken(cur) // '('
+		// subroutineName
+		compileIdentifier(cur, SUBROUTINE, USED)
+		cur = nextToken()
+		// '('
+		compileToken(cur)
 		consume(LPAREN)
 		compileExpressionList()
 		compileToken(cur) // ')'
 		consume(RPAREN)
-	}
-	if equal(cur, PERIOD) {
+	} else if equal(next, PERIOD) {
 		// subroutineCall = (className | varName) '.' subroutineName
 		// 									'(' exprList ')'
-		compileToken(cur) // '.'
+		// className | varName
+		kind := kindOf(cur.str)
+		var category string
+		if kind == iNone {
+			category = CLASS
+		} else {
+			category = string(kind)
+		}
+		compileIdentifier(cur, category, USED)
+		cur = nextToken()
+		// '.'
+		compileToken(cur)
 		consume(PERIOD)
-		compileToken(cur) // identifier
+		// subroutineName
+		compileIdentifier(cur, SUBROUTINE, USED)
 		cur = nextToken()
 		compileToken(cur) // '('
 		cur = nextToken()
@@ -213,7 +283,8 @@ func compileLet() {
 	results = append(results, "<letStatement>")
 	compileToken(cur) // let
 	consume(LET)
-	compileToken(cur) // varName
+	// varName
+	compileIdentifier(cur, string(kindOf(cur.str)), USED)
 	cur = nextToken()
 	if equal(cur, LBRACKET) {
 		compileToken(cur) // '['
@@ -321,36 +392,55 @@ func isUnaryOperator(str string) bool {
 func compileTerm() {
 	results = append(results, "<term>")
 	if cur.kind == IDENTIFIER {
-		compileToken(cur)
-		cur = nextToken()
-		if equal(cur, LBRACKET) {
+		next := readNextToken()
+		if equal(next, LBRACKET) {
 			// varName | varName '[' expr ']'
+			// varName
+			compileIdentifier(cur, string(kindOf(cur.str)), USED)
+			cur = nextToken()
 			compileToken(cur) // '['
 			consume(LBRACKET)
 			compileExpression()
 			compileToken(cur) // ']'
 			consume(RBRACKET)
-		}
-		if equal(cur, LPAREN) {
+		} else if equal(next, LPAREN) {
 			// subroutineCall = subroutineName '(' exprList ')'
-			compileToken(cur) // '('
+			// subroutineName
+			compileIdentifier(cur, string(kindOf(cur.str)), USED)
+			cur = nextToken()
+			// '('
+			compileToken(cur)
 			consume(LPAREN)
 			compileExpressionList()
 			compileToken(cur) // ')'
 			consume(RPAREN)
-		}
-		if equal(cur, PERIOD) {
+		} else if equal(next, PERIOD) {
 			// subroutineCall = (className | varName) '.' subroutineName
 			// 									'(' exprList ')'
-			compileToken(cur) // '.'
+			// className | varName
+			kind := kindOf(cur.str)
+			var category string
+			if kind == iNone {
+				category = CLASS
+			} else {
+				category = string(kind)
+			}
+			compileIdentifier(cur, category, USED)
+			cur = nextToken()
+			// '.'
+			compileToken(cur)
 			consume(PERIOD)
-			compileToken(cur) // subroutineName
+			// subroutineName
+			compileIdentifier(cur, SUBROUTINE, USED)
 			cur = nextToken()
 			compileToken(cur) // '('
 			consume(LPAREN)
 			compileExpressionList()
 			compileToken(cur) // ')'
 			consume(RPAREN)
+		} else {
+			compileIdentifier(cur, string(kindOf(cur.str)), USED)
+			cur = nextToken()
 		}
 	} else if isUnaryOperator(cur.str) {
 		compileToken(cur) // unaryOperator
@@ -393,18 +483,69 @@ func compileToken(tok token) {
 	results = append(results, str)
 }
 
-func compileIdentifier(tok token) {
+func compileIdentifier(tok token, category string, defOrUsed string) {
 	if tok.kind != IDENTIFIER {
 		panic("compile error. not identifier.")
 	}
-	kind := string(tok.kind)
-	str := "<" + kind + "> " + tok.str + " </" + kind + ">"
+	tokKind := string(tok.kind)
+	// str := "<" + tokKind + "> " + tok.str + " </" + tokKind + ">"
+	str := "<" + tokKind + "> "
+	str = str + "name: " + tok.str
+	str = str + ", category: " + category
+	str = str + ", D/U: " + defOrUsed
+	kind := string(kindOf(tok.str))
+	str = str + ", kind: " + kind
+	index := indexOf(tok.str)
+	str = str + ", index: " + strconv.Itoa(index)
+	str = str + " </" + tokKind + ">"
 	results = append(results, str)
+}
+
+func define(name string, t string, kind identifierKind) {
+	i := identifier{name: name, typ: t, kind: kind}
+	if kind == iStatic || kind == iField {
+		symbolTable = append(symbolTable, i)
+	}
+	if kind == iArg || kind == iVar {
+		subroutineSymbolTable = append(subroutineSymbolTable, i)
+	}
+}
+
+func indexOf(name string) int {
+	for i, s := range subroutineSymbolTable {
+		if s.name == name {
+			return i
+		}
+	}
+	for i, s := range symbolTable {
+		if s.name == name {
+			return i
+		}
+	}
+	return -1
+}
+
+func kindOf(name string) identifierKind {
+	for _, s := range subroutineSymbolTable {
+		if s.name == name {
+			return s.kind
+		}
+	}
+	for _, s := range symbolTable {
+		if s.name == name {
+			return s.kind
+		}
+	}
+	return iNone
 }
 
 func nextToken() token {
 	position++
 	return tokens[position]
+}
+
+func readNextToken() token {
+	return tokens[position+1]
 }
 
 func equal(tok token, str string) bool {
