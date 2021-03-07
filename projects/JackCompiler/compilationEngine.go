@@ -50,8 +50,9 @@ func initializeCompileEngine() {
 	subroutineSymbolTable = make([]identifier, 0)
 }
 
-func compile(toks []token) []string {
+func compile(toks []token) ([]string, []string) {
 	initializeCompileEngine()
+	initializeVMWriter()
 	tokens = append(toks, token{str: EOF})
 	cur = tokens[0]
 
@@ -59,8 +60,10 @@ func compile(toks []token) []string {
 		compileClass()
 	}
 
-	return results
+	return results, vmResult
 }
+
+var className string
 
 // class = 'class' className '{' classVarDec* subroutineDec* '}'
 func compileClass() {
@@ -69,6 +72,7 @@ func compileClass() {
 	results = append(results, "<class>")
 	compileToken(cur) // class
 	consume(CLASS)
+	className = cur.str
 	compileIdentifier(cur, CLASS, DEFINED) // className
 	consumeIdentifier()
 	compileToken(cur) // '{'
@@ -136,11 +140,14 @@ func compileSubroutine() {
 	cur = nextToken()
 	// subroutineName
 	compileIdentifier(cur, SUBROUTINE, DEFINED)
+	subroutineName := className + "." + cur.str
 	cur = nextToken()
 	compileToken(cur) // '('
 	consume(LPAREN)
 
-	compileParameterList() // parameterList
+	nLocals := compileParameterList() // parameterList
+
+	writeFunction(subroutineName, nLocals)
 
 	compileToken(cur) // ')'
 	consume(RPAREN)
@@ -182,11 +189,11 @@ func compileSubroutine() {
 }
 
 // parameterList = ((type varName) (',' type varName)* )?
-func compileParameterList() {
+func compileParameterList() int {
 	results = append(results, "<parameterList>")
 	if equal(cur, RPAREN) {
 		results = append(results, "</parameterList>")
-		return
+		return 0
 	}
 	compileToken(cur) // type
 	typ := cur.str
@@ -195,6 +202,7 @@ func compileParameterList() {
 	define(cur.str, typ, iArg)
 	compileIdentifier(cur, ARGUMENT, DEFINED)
 	cur = nextToken()
+	nLocals := 1
 	for equal(cur, COMMA) {
 		compileToken(cur) // ','
 		consume(COMMA)
@@ -202,7 +210,9 @@ func compileParameterList() {
 		cur = nextToken()
 		compileToken(cur) // varName
 		cur = nextToken()
+		nLocals++
 	}
+	return nLocals
 }
 
 // statements = statement*
@@ -241,13 +251,16 @@ func compileDo() {
 		// subroutineCall = subroutineName '(' exprList ')'
 		// subroutineName
 		compileIdentifier(cur, SUBROUTINE, USED)
+		subroutineName := className + "." + cur.str
 		cur = nextToken()
 		// '('
 		compileToken(cur)
 		consume(LPAREN)
-		compileExpressionList()
+		nArgs := compileExpressionList()
 		compileToken(cur) // ')'
 		consume(RPAREN)
+
+		writeCall(subroutineName, nArgs)
 	} else if equal(next, PERIOD) {
 		// subroutineCall = (className | varName) '.' subroutineName
 		// 									'(' exprList ')'
@@ -260,18 +273,22 @@ func compileDo() {
 			category = string(kind)
 		}
 		compileIdentifier(cur, category, USED)
+		subroutineName := cur.str
 		cur = nextToken()
 		// '.'
 		compileToken(cur)
 		consume(PERIOD)
 		// subroutineName
 		compileIdentifier(cur, SUBROUTINE, USED)
+		subroutineName += "." + cur.str
 		cur = nextToken()
 		compileToken(cur) // '('
 		cur = nextToken()
-		compileExpressionList()
+		nArgs := compileExpressionList()
 		compileToken(cur) // ')'
 		consume(RPAREN)
+
+		writeCall(subroutineName, nArgs)
 	}
 	compileToken(cur) // ';'
 	consume(SEMICOLON)
@@ -330,6 +347,8 @@ func compileReturn() {
 	compileToken(cur) // ';'
 	consume(SEMICOLON)
 	results = append(results, "</returnStatement>")
+	// vmWriter
+	writeReturn()
 }
 
 // ifStatement = 'if' '(' expr ')' '{' statements '}'
@@ -365,9 +384,19 @@ func compileExpression() {
 	results = append(results, "<expression>")
 	compileTerm() // term
 	for isOperator(cur.str) {
-		compileToken(cur) // op
+		// op
+		compileToken(cur)
+		opStr := cur.str
 		cur = nextToken()
-		compileTerm() // term
+		// term
+		compileTerm()
+
+		switch opStr {
+		case PLUS:
+			writeArithmetic(aAdd)
+		case ASTERISK:
+			writeCall("Math.multiply", 2)
+		}
 	}
 	results = append(results, "</expression>")
 }
@@ -407,13 +436,17 @@ func compileTerm() {
 			// subroutineCall = subroutineName '(' exprList ')'
 			// subroutineName
 			compileIdentifier(cur, string(kindOf(cur.str)), USED)
+			subroutineName := cur.str
 			cur = nextToken()
 			// '('
 			compileToken(cur)
 			consume(LPAREN)
-			compileExpressionList()
-			compileToken(cur) // ')'
+			nArgs := compileExpressionList()
+			// ')'
+			compileToken(cur)
 			consume(RPAREN)
+
+			writeCall(subroutineName, nArgs)
 		} else if equal(next, PERIOD) {
 			// subroutineCall = (className | varName) '.' subroutineName
 			// 									'(' exprList ')'
@@ -426,18 +459,22 @@ func compileTerm() {
 				category = string(kind)
 			}
 			compileIdentifier(cur, category, USED)
+			subroutineName := cur.str
 			cur = nextToken()
 			// '.'
 			compileToken(cur)
 			consume(PERIOD)
 			// subroutineName
 			compileIdentifier(cur, SUBROUTINE, USED)
+			subroutineName += subroutineName + "." + cur.str
 			cur = nextToken()
 			compileToken(cur) // '('
 			consume(LPAREN)
-			compileExpressionList()
+			nArgs := compileExpressionList()
 			compileToken(cur) // ')'
 			consume(RPAREN)
+
+			writeCall(subroutineName, nArgs)
 		} else {
 			compileIdentifier(cur, string(kindOf(cur.str)), USED)
 			cur = nextToken()
@@ -456,25 +493,32 @@ func compileTerm() {
 	} else {
 		// integerConstant | stringConstant | keywordConsant
 		compileToken(cur)
+
+		index, _ := strconv.Atoi(cur.str)
+		writePush(sConst, index)
+
 		cur = nextToken()
 	}
 	results = append(results, "</term>")
 }
 
 // exprList = (expr (',' expr)* )?
-func compileExpressionList() {
+func compileExpressionList() int {
 	results = append(results, "<expressionList>")
 	if equal(cur, RPAREN) {
 		results = append(results, "</expressionList>")
-		return
+		return 0
 	}
 	compileExpression()
+	nArgs := 1
 	for equal(cur, COMMA) {
-		compileToken(cur) // '.'
+		compileToken(cur) // ','
 		consume(COMMA)
 		compileExpression()
+		nArgs++
 	}
 	results = append(results, "</expressionList>")
+	return nArgs
 }
 
 func compileToken(tok token) {
@@ -568,4 +612,107 @@ func consumeIdentifier() {
 	}
 	position++
 	cur = tokens[position]
+}
+
+// vmWriter
+
+var vmResult []string
+
+var labelIndex int
+
+func initializeVMWriter() {
+	vmResult = make([]string, 0)
+	labelIndex = 0
+}
+
+type segment string
+
+const (
+	sConst   segment = "constant"
+	sArg     segment = "argument"
+	sLocal   segment = "local"
+	sStatic  segment = "static"
+	sThis    segment = "this"
+	sThat    segment = "that"
+	sPointer segment = "pointer"
+	sTemp    segment = "temp"
+)
+
+func writePush(seg segment, index int) {
+	str := "push " + string(seg) + " " + strconv.Itoa(index)
+	vmResult = append(vmResult, str)
+}
+
+func writePop(seg segment, index int) {
+	str := "pop " + string(seg) + " " + strconv.Itoa(index)
+	vmResult = append(vmResult, str)
+}
+
+type arithmetic string
+
+const (
+	aAdd arithmetic = "add"
+	aSub arithmetic = "sub"
+	aNeg arithmetic = "neg"
+	aEq  arithmetic = "eq"
+	aGt  arithmetic = "gt"
+	aLt  arithmetic = "lt"
+	aAnd arithmetic = "and"
+	aOr  arithmetic = "or"
+	aNot arithmetic = "not"
+)
+
+func toArithmetic(str string) arithmetic {
+	switch str {
+	case PLUS:
+		return aAdd
+	case MINUS:
+		return aSub
+	case AND:
+		return aAnd
+	case OR:
+		return aOr
+	case LT:
+		return aLt
+	case RT:
+		return aGt
+	case EQUAL:
+		return aEq
+	}
+	panic("not supported operator")
+}
+
+func writeArithmetic(command arithmetic) {
+	str := string(command)
+	vmResult = append(vmResult, str)
+}
+
+func writeLabel(label string) {
+	str := "label " + label
+	vmResult = append(vmResult, str)
+}
+
+func writeGoto(label string) {
+	str := "goto " + label
+	vmResult = append(vmResult, str)
+}
+
+func writeIf(label string) {
+	str := "if-goto " + label
+	vmResult = append(vmResult, str)
+}
+
+func writeCall(name string, nArgs int) {
+	str := "call " + name + " " + strconv.Itoa(nArgs)
+	vmResult = append(vmResult, str)
+}
+
+func writeFunction(name string, nLocals int) {
+	str := "function " + name + " " + strconv.Itoa(nLocals)
+	vmResult = append(vmResult, str)
+}
+
+func writeReturn() {
+	str := "return"
+	vmResult = append(vmResult, str)
 }

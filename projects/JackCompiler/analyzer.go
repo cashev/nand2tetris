@@ -25,8 +25,10 @@ func analyzeFile(fileName string) {
 	toks := tokenize()
 
 	fileName = strings.Replace(fileName, ".jack", "", -1)
-	writeFile(fileName+"T.xml", compileTokenList(toks))
-	writeFile(fileName+".xml", compile(toks))
+	// writeFile(fileName+"T.xml", compileTokenList(toks))
+	_, vmCode := compile((toks))
+	// writeFile(fileName+".xml", xmlCode)
+	writeFile(fileName+".vm", vmCode)
 }
 
 func compileTokenList(toks []token) []string {
