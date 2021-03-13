@@ -145,9 +145,7 @@ func compileSubroutine() {
 	compileToken(cur) // '('
 	consume(LPAREN)
 
-	nLocals := compileParameterList() // parameterList
-
-	writeFunction(subroutineName, nLocals)
+	compileParameterList() // parameterList
 
 	compileToken(cur) // ')'
 	consume(RPAREN)
@@ -155,6 +153,7 @@ func compileSubroutine() {
 	// subroutineBody = '{' varDec* statements '}'
 	results = append(results, "<subroutineBody>")
 	compileToken(cur) // '{'
+	nLocals := 0
 	consume(LBRACE)
 	for equal(cur, VAR) {
 		results = append(results, "<varDec>")
@@ -168,6 +167,7 @@ func compileSubroutine() {
 		define(cur.str, typ, iVar)
 		compileIdentifier(cur, VAR, DEFINED)
 		cur = nextToken()
+		nLocals++
 		for equal(cur, COMMA) {
 			compileToken(cur) // ','
 			consume(COMMA)
@@ -175,11 +175,15 @@ func compileSubroutine() {
 			define(cur.str, typ, iVar)
 			compileIdentifier(cur, VAR, DEFINED)
 			cur = nextToken()
+			nLocals++
 		}
 		compileToken(cur) // ';'
 		consume(SEMICOLON)
 		results = append(results, "</varDec>")
 	}
+	// vmWriter
+	writeFunction(subroutineName, nLocals)
+
 	compileStatements()
 
 	compileToken(cur) // '}'
@@ -207,7 +211,9 @@ func compileParameterList() int {
 		compileToken(cur) // ','
 		consume(COMMA)
 		compileToken(cur) // type
+		typ = cur.str
 		cur = nextToken()
+		define(cur.str, typ, iArg)
 		compileToken(cur) // varName
 		cur = nextToken()
 		nLocals++
@@ -302,6 +308,7 @@ func compileLet() {
 	consume(LET)
 	// varName
 	compileIdentifier(cur, string(kindOf(cur.str)), USED)
+	varName := cur.str
 	cur = nextToken()
 	if equal(cur, LBRACKET) {
 		compileToken(cur) // '['
@@ -315,25 +322,44 @@ func compileLet() {
 	compileExpression()
 	compileToken(cur) // ';'
 	consume(SEMICOLON)
+	// vmWriter
+	index := indexOf(varName)
+	switch kindOf(varName) {
+	case iVar:
+		writePop(sLocal, index)
+	case iArg:
+		writePop(sArg, index)
+	}
 	results = append(results, "</letStatement>")
 }
+
+var whileLabelIndex int
 
 // whileStatement = 'while' '(' expr ')' '{' statements '}'
 func compileWhile() {
 	results = append(results, "<whileStatement>")
 	compileToken(cur) // 'while'
 	consume(WHILE)
+	// vmWriter
+	writeLabel("while.cond." + strconv.Itoa(whileLabelIndex))
 	compileToken(cur) // '('
 	consume(LPAREN)
 	compileExpression()
 	compileToken(cur) // ')'
 	consume(RPAREN)
+	// vmWriter
+	writeArithmetic(aNot)
+	writeIf("while.end." + strconv.Itoa(whileLabelIndex))
+
 	compileToken(cur) // '{'
 	consume(LBRACE)
 	compileStatements()
 	compileToken(cur) // '}'
 	consume(RBRACE)
 	results = append(results, "</whileStatement>")
+	// vmWriter
+	writeGoto("while.cond." + strconv.Itoa(whileLabelIndex))
+	writeLabel("while.end." + strconv.Itoa(whileLabelIndex))
 }
 
 // returnStatement = 'return' expr? ';'
@@ -351,6 +377,8 @@ func compileReturn() {
 	writeReturn()
 }
 
+var ifLabelIndex int
+
 // ifStatement = 'if' '(' expr ')' '{' statements '}'
 // 							 ('else' '{' statements '}')?
 func compileIf() {
@@ -362,11 +390,18 @@ func compileIf() {
 	compileExpression()
 	compileToken(cur) // ')'
 	consume(RPAREN)
+	// vmWriter
+	writeArithmetic(aNot)
+	writeIf("if.else." + strconv.Itoa(ifLabelIndex))
+
 	compileToken(cur) // '{'
 	consume(LBRACE)
 	compileStatements()
 	compileToken(cur) // '}'
 	consume(RBRACE)
+	// vmWriter
+	writeGoto("if.end." + strconv.Itoa(ifLabelIndex))
+	writeLabel("if.else." + strconv.Itoa(ifLabelIndex))
 	if equal(cur, ELSE) {
 		compileToken(cur) // 'else'
 		consume(ELSE)
@@ -376,6 +411,8 @@ func compileIf() {
 		compileToken(cur) // '}'
 		consume(RBRACE)
 	}
+	writeLabel("if.end." + strconv.Itoa(ifLabelIndex))
+	ifLabelIndex++
 	results = append(results, "</ifStatement>")
 }
 
@@ -394,8 +431,18 @@ func compileExpression() {
 		switch opStr {
 		case PLUS:
 			writeArithmetic(aAdd)
+		case MINUS:
+			writeArithmetic(aSub)
 		case ASTERISK:
 			writeCall("Math.multiply", 2)
+		case LT:
+			writeArithmetic(aLt)
+		case RT:
+			writeArithmetic(aGt)
+		case EQUAL:
+			writeArithmetic(aEq)
+		case AND:
+			writeArithmetic(aAnd)
 		}
 	}
 	results = append(results, "</expression>")
@@ -466,7 +513,7 @@ func compileTerm() {
 			consume(PERIOD)
 			// subroutineName
 			compileIdentifier(cur, SUBROUTINE, USED)
-			subroutineName += subroutineName + "." + cur.str
+			subroutineName += "." + cur.str
 			cur = nextToken()
 			compileToken(cur) // '('
 			consume(LPAREN)
@@ -477,12 +524,28 @@ func compileTerm() {
 			writeCall(subroutineName, nArgs)
 		} else {
 			compileIdentifier(cur, string(kindOf(cur.str)), USED)
+			index := indexOf(cur.str)
+			switch kindOf(cur.str) {
+			case iVar:
+				writePush(sLocal, index)
+			case iArg:
+				writePush(sArg, index)
+			}
 			cur = nextToken()
 		}
 	} else if isUnaryOperator(cur.str) {
 		compileToken(cur) // unaryOperator
+		unaryOperator := cur.str
 		cur = nextToken()
 		compileTerm() // term
+		// vmWriter
+		switch unaryOperator {
+		case MINUS:
+			writeArithmetic(aNeg)
+		case TILDE:
+			writeArithmetic(aNot)
+		}
+
 	} else if equal(cur, LPAREN) {
 		// '(' expr ')'
 		compileToken(cur) // '('
@@ -494,8 +557,18 @@ func compileTerm() {
 		// integerConstant | stringConstant | keywordConsant
 		compileToken(cur)
 
-		index, _ := strconv.Atoi(cur.str)
-		writePush(sConst, index)
+		index, err := strconv.Atoi(cur.str)
+		if err == nil {
+			writePush(sConst, index)
+		} else {
+			if cur.str == TRUE {
+				writePush(sConst, 1)
+				writeArithmetic(aNeg)
+			}
+			if cur.str == FALSE {
+				writePush(sConst, 0)
+			}
+		}
 
 		cur = nextToken()
 	}
@@ -556,14 +629,40 @@ func define(name string, t string, kind identifierKind) {
 }
 
 func indexOf(name string) int {
-	for i, s := range subroutineSymbolTable {
+	varIndex := 0
+	argIndex := 0
+	for _, s := range subroutineSymbolTable {
 		if s.name == name {
-			return i
+			switch s.kind {
+			case iVar:
+				return varIndex
+			case iArg:
+				return argIndex
+			}
+		}
+		switch s.kind {
+		case iVar:
+			varIndex++
+		case iArg:
+			argIndex++
 		}
 	}
-	for i, s := range symbolTable {
+	fieldIndex := 0
+	staticIndex := 0
+	for _, s := range symbolTable {
 		if s.name == name {
-			return i
+			switch s.kind {
+			case iField:
+				return fieldIndex
+			case iStatic:
+				return staticIndex
+			}
+		}
+		switch s.kind {
+		case iField:
+			fieldIndex++
+		case iStatic:
+			staticIndex++
 		}
 	}
 	return -1
@@ -623,6 +722,8 @@ var labelIndex int
 func initializeVMWriter() {
 	vmResult = make([]string, 0)
 	labelIndex = 0
+	whileLabelIndex = 0
+	ifLabelIndex = 0
 }
 
 type segment string
