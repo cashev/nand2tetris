@@ -64,6 +64,7 @@ func compile(toks []token) ([]string, []string) {
 }
 
 var className string
+var fieldSize int
 
 // class = 'class' className '{' classVarDec* subroutineDec* '}'
 func compileClass() {
@@ -73,6 +74,7 @@ func compileClass() {
 	compileToken(cur) // class
 	consume(CLASS)
 	className = cur.str
+	fieldSize = 0
 	compileIdentifier(cur, CLASS, DEFINED) // className
 	consumeIdentifier()
 	compileToken(cur) // '{'
@@ -106,6 +108,7 @@ func compileClassVarDec() {
 		iKind = iStatic
 	} else {
 		iKind = iField
+		fieldSize++
 	}
 	define(cur.str, typ, iKind)
 	compileIdentifier(cur, category, DEFINED)
@@ -116,6 +119,9 @@ func compileClassVarDec() {
 		// varName
 		define(cur.str, typ, iKind)
 		compileIdentifier(cur, category, DEFINED)
+		if iKind == iField {
+			fieldSize++
+		}
 		cur = nextToken()
 	}
 	compileToken(cur) // ';'
@@ -135,6 +141,7 @@ func compileSubroutine() {
 
 	results = append(results, "<subroutineDec>")
 	compileToken(cur) // 'construct' | 'function' | 'method'
+	subroutineType := cur.str
 	cur = nextToken()
 	compileToken(cur) // 'void' | type
 	cur = nextToken()
@@ -183,6 +190,14 @@ func compileSubroutine() {
 	}
 	// vmWriter
 	writeFunction(subroutineName, nLocals)
+	if subroutineType == METHOD {
+		writePush(sArg, 0)
+		writePop(sPointer, 0)
+	} else if subroutineType == CONSTRUCTOR {
+		writePush(sConst, fieldSize)
+		writeCall("Memory.alloc", 1)
+		writePop(sPointer, 0)
+	}
 
 	compileStatements()
 
@@ -266,20 +281,34 @@ func compileDo() {
 		compileToken(cur) // ')'
 		consume(RPAREN)
 
-		writeCall(subroutineName, nArgs)
+		writePush(sPointer, 0)
+		writeCall(subroutineName, nArgs+1)
 	} else if equal(next, PERIOD) {
 		// subroutineCall = (className | varName) '.' subroutineName
 		// 									'(' exprList ')'
 		// className | varName
 		kind := kindOf(cur.str)
 		var category string
+		var subroutineName string
+		nArgs := 0
 		if kind == iNone {
 			category = CLASS
+			subroutineName = cur.str
 		} else {
 			category = string(kind)
+			subroutineName = TypeOf(cur.str)
+			index := indexOf(cur.str)
+			switch kindOf(cur.str) {
+			case iVar:
+				writePush(sLocal, index)
+			case iArg:
+				writePush(sArg, index)
+			case iField:
+				writePush(sThis, index)
+			}
+			nArgs++
 		}
 		compileIdentifier(cur, category, USED)
-		subroutineName := cur.str
 		cur = nextToken()
 		// '.'
 		compileToken(cur)
@@ -290,7 +319,7 @@ func compileDo() {
 		cur = nextToken()
 		compileToken(cur) // '('
 		cur = nextToken()
-		nArgs := compileExpressionList()
+		nArgs += compileExpressionList()
 		compileToken(cur) // ')'
 		consume(RPAREN)
 
@@ -299,6 +328,8 @@ func compileDo() {
 	compileToken(cur) // ';'
 	consume(SEMICOLON)
 	results = append(results, "</doStatement>")
+
+	writePop(sTemp, 0)
 }
 
 // letstatement = 'let' varName ('[' expr ']')? '=' expr ';'
@@ -329,11 +360,11 @@ func compileLet() {
 		writePop(sLocal, index)
 	case iArg:
 		writePop(sArg, index)
+	case iField:
+		writePop(sThis, index)
 	}
 	results = append(results, "</letStatement>")
 }
-
-var whileLabelIndex int
 
 // whileStatement = 'while' '(' expr ')' '{' statements '}'
 func compileWhile() {
@@ -341,7 +372,9 @@ func compileWhile() {
 	compileToken(cur) // 'while'
 	consume(WHILE)
 	// vmWriter
-	writeLabel("while.cond." + strconv.Itoa(whileLabelIndex))
+	condIndex := labelIndex
+	labelIndex++
+	writeLabel(condIndex)
 	compileToken(cur) // '('
 	consume(LPAREN)
 	compileExpression()
@@ -349,7 +382,9 @@ func compileWhile() {
 	consume(RPAREN)
 	// vmWriter
 	writeArithmetic(aNot)
-	writeIf("while.end." + strconv.Itoa(whileLabelIndex))
+	endIndex := labelIndex
+	labelIndex++
+	writeIf("label" + strconv.Itoa(endIndex))
 
 	compileToken(cur) // '{'
 	consume(LBRACE)
@@ -358,8 +393,8 @@ func compileWhile() {
 	consume(RBRACE)
 	results = append(results, "</whileStatement>")
 	// vmWriter
-	writeGoto("while.cond." + strconv.Itoa(whileLabelIndex))
-	writeLabel("while.end." + strconv.Itoa(whileLabelIndex))
+	writeGoto("label" + strconv.Itoa(condIndex))
+	writeLabel(endIndex)
 }
 
 // returnStatement = 'return' expr? ';'
@@ -369,6 +404,9 @@ func compileReturn() {
 	consume(RETURN)
 	if !equal(cur, SEMICOLON) {
 		compileExpression()
+	} else {
+		writePush(sConst, 0)
+
 	}
 	compileToken(cur) // ';'
 	consume(SEMICOLON)
@@ -376,8 +414,6 @@ func compileReturn() {
 	// vmWriter
 	writeReturn()
 }
-
-var ifLabelIndex int
 
 // ifStatement = 'if' '(' expr ')' '{' statements '}'
 // 							 ('else' '{' statements '}')?
@@ -392,7 +428,11 @@ func compileIf() {
 	consume(RPAREN)
 	// vmWriter
 	writeArithmetic(aNot)
-	writeIf("if.else." + strconv.Itoa(ifLabelIndex))
+	endIndex := labelIndex
+	labelIndex++
+	elseIndex := labelIndex
+	labelIndex++
+	writeIf("label" + strconv.Itoa(elseIndex))
 
 	compileToken(cur) // '{'
 	consume(LBRACE)
@@ -400,8 +440,8 @@ func compileIf() {
 	compileToken(cur) // '}'
 	consume(RBRACE)
 	// vmWriter
-	writeGoto("if.end." + strconv.Itoa(ifLabelIndex))
-	writeLabel("if.else." + strconv.Itoa(ifLabelIndex))
+	writeGoto("label" + strconv.Itoa(endIndex))
+	writeLabel(elseIndex)
 	if equal(cur, ELSE) {
 		compileToken(cur) // 'else'
 		consume(ELSE)
@@ -411,8 +451,7 @@ func compileIf() {
 		compileToken(cur) // '}'
 		consume(RBRACE)
 	}
-	writeLabel("if.end." + strconv.Itoa(ifLabelIndex))
-	ifLabelIndex++
+	writeLabel(endIndex)
 	results = append(results, "</ifStatement>")
 }
 
@@ -435,6 +474,8 @@ func compileExpression() {
 			writeArithmetic(aSub)
 		case ASTERISK:
 			writeCall("Math.multiply", 2)
+		case SLASH:
+			writeCall("Math.divide", 2)
 		case LT:
 			writeArithmetic(aLt)
 		case RT:
@@ -530,6 +571,8 @@ func compileTerm() {
 				writePush(sLocal, index)
 			case iArg:
 				writePush(sArg, index)
+			case iField:
+				writePush(sThis, index)
 			}
 			cur = nextToken()
 		}
@@ -559,14 +602,24 @@ func compileTerm() {
 
 		index, err := strconv.Atoi(cur.str)
 		if err == nil {
+			// integerConstant
 			writePush(sConst, index)
 		} else {
 			if cur.str == TRUE {
 				writePush(sConst, 1)
 				writeArithmetic(aNeg)
-			}
-			if cur.str == FALSE {
+			} else if cur.str == FALSE {
 				writePush(sConst, 0)
+			} else if cur.str == THIS {
+				writePush(sPointer, 0)
+			} else {
+				len := len(cur.str)
+				writePush(sConst, len)
+				writeCall("String.new", 1)
+				for _, c := range cur.str {
+					writePush(sConst, int(c))
+					writeCall("String.appendChar", 2)
+				}
 			}
 		}
 
@@ -682,6 +735,20 @@ func kindOf(name string) identifierKind {
 	return iNone
 }
 
+func TypeOf(name string) string {
+	for _, s := range subroutineSymbolTable {
+		if s.name == name {
+			return s.typ
+		}
+	}
+	for _, s := range symbolTable {
+		if s.name == name {
+			return s.typ
+		}
+	}
+	return ""
+}
+
 func nextToken() token {
 	position++
 	return tokens[position]
@@ -717,13 +784,8 @@ func consumeIdentifier() {
 
 var vmResult []string
 
-var labelIndex int
-
 func initializeVMWriter() {
 	vmResult = make([]string, 0)
-	labelIndex = 0
-	whileLabelIndex = 0
-	ifLabelIndex = 0
 }
 
 type segment string
@@ -788,8 +850,10 @@ func writeArithmetic(command arithmetic) {
 	vmResult = append(vmResult, str)
 }
 
-func writeLabel(label string) {
-	str := "label " + label
+var labelIndex = 1
+
+func writeLabel(index int) {
+	str := "label label" + strconv.Itoa(index)
 	vmResult = append(vmResult, str)
 }
 
