@@ -297,15 +297,7 @@ func compileDo() {
 		} else {
 			category = string(kind)
 			subroutineName = TypeOf(cur.str)
-			index := indexOf(cur.str)
-			switch kindOf(cur.str) {
-			case iVar:
-				writePush(sLocal, index)
-			case iArg:
-				writePush(sArg, index)
-			case iField:
-				writePush(sThis, index)
-			}
+			writePushIdentifier(cur.str)
 			nArgs++
 		}
 		compileIdentifier(cur, category, USED)
@@ -341,29 +333,34 @@ func compileLet() {
 	compileIdentifier(cur, string(kindOf(cur.str)), USED)
 	varName := cur.str
 	cur = nextToken()
+	isArray := false
 	if equal(cur, LBRACKET) {
+		// vmWriter
+		writePushIdentifier(varName)
+		isArray = true
 		compileToken(cur) // '['
 		consume(LBRACKET)
 		compileExpression()
 		compileToken(cur) // ']'
 		consume(RBRACKET)
+		// vmWriter
+		writeArithmetic(aAdd)
 	}
 	compileToken(cur) // '='
 	consume(EQUAL)
 	compileExpression()
 	compileToken(cur) // ';'
 	consume(SEMICOLON)
-	// vmWriter
-	index := indexOf(varName)
-	switch kindOf(varName) {
-	case iVar:
-		writePop(sLocal, index)
-	case iArg:
-		writePop(sArg, index)
-	case iField:
-		writePop(sThis, index)
-	}
 	results = append(results, "</letStatement>")
+	// vmWriter
+	if isArray {
+		writePop(sTemp, 1)
+		writePop(sPointer, 1)
+		writePush(sTemp, 1)
+		writePop(sThat, 0)
+	} else {
+		writePopIdentifier(varName)
+	}
 }
 
 // whileStatement = 'while' '(' expr ')' '{' statements '}'
@@ -514,12 +511,17 @@ func compileTerm() {
 			// varName | varName '[' expr ']'
 			// varName
 			compileIdentifier(cur, string(kindOf(cur.str)), USED)
+			writePushIdentifier(cur.str)
 			cur = nextToken()
 			compileToken(cur) // '['
 			consume(LBRACKET)
 			compileExpression()
 			compileToken(cur) // ']'
 			consume(RBRACKET)
+			// vmWriter
+			writeArithmetic(aAdd)
+			writePop(sPointer, 1)
+			writePush(sThat, 0)
 		} else if equal(next, LPAREN) {
 			// subroutineCall = subroutineName '(' exprList ')'
 			// subroutineName
@@ -565,15 +567,8 @@ func compileTerm() {
 			writeCall(subroutineName, nArgs)
 		} else {
 			compileIdentifier(cur, string(kindOf(cur.str)), USED)
-			index := indexOf(cur.str)
-			switch kindOf(cur.str) {
-			case iVar:
-				writePush(sLocal, index)
-			case iArg:
-				writePush(sArg, index)
-			case iField:
-				writePush(sThis, index)
-			}
+			// vmWriter
+			writePushIdentifier(cur.str)
 			cur = nextToken()
 		}
 	} else if isUnaryOperator(cur.str) {
@@ -747,6 +742,30 @@ func TypeOf(name string) string {
 		}
 	}
 	return ""
+}
+
+func writePushIdentifier(str string) {
+	index := indexOf(str)
+	switch kindOf(str) {
+	case iVar:
+		writePush(sLocal, index)
+	case iArg:
+		writePush(sArg, index)
+	case iField:
+		writePush(sThis, index)
+	}
+}
+
+func writePopIdentifier(str string) {
+	index := indexOf(str)
+	switch kindOf(str) {
+	case iVar:
+		writePop(sLocal, index)
+	case iArg:
+		writePop(sArg, index)
+	case iField:
+		writePop(sThis, index)
+	}
 }
 
 func nextToken() token {
