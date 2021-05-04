@@ -616,6 +616,8 @@ func compileTerm() {
 				writePush(sConst, 0)
 			} else if cur.str == THIS {
 				writePush(sPointer, 0)
+			} else if cur.str == NULL {
+				writePush(sConst, 0)
 			} else {
 				len := len(cur.str)
 				writePush(sConst, len)
@@ -776,7 +778,10 @@ func writePopIdentifier(str string) {
 	case iVar:
 		writePop(sLocal, index)
 	case iArg:
-		writePop(sArg, index+1)
+		if subroutineType == METHOD {
+			index++
+		}
+		writePop(sArg, index)
 	case iField:
 		writePop(sThis, index)
 	case iStatic:
