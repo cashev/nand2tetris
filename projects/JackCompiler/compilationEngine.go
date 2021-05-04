@@ -65,6 +65,7 @@ func compile(toks []token) ([]string, []string) {
 
 var className string
 var fieldSize int
+var subroutineType string
 
 // class = 'class' className '{' classVarDec* subroutineDec* '}'
 func compileClass() {
@@ -141,7 +142,7 @@ func compileSubroutine() {
 
 	results = append(results, "<subroutineDec>")
 	compileToken(cur) // 'construct' | 'function' | 'method'
-	subroutineType := cur.str
+	subroutineType = cur.str
 	cur = nextToken()
 	compileToken(cur) // 'void' | type
 	cur = nextToken()
@@ -274,6 +275,7 @@ func compileDo() {
 		compileIdentifier(cur, SUBROUTINE, USED)
 		subroutineName := className + "." + cur.str
 		cur = nextToken()
+		writePush(sPointer, 0)
 		// '('
 		compileToken(cur)
 		consume(LPAREN)
@@ -281,21 +283,20 @@ func compileDo() {
 		compileToken(cur) // ')'
 		consume(RPAREN)
 
-		writePush(sPointer, 0)
 		writeCall(subroutineName, nArgs+1)
 	} else if equal(next, PERIOD) {
 		// subroutineCall = (className | varName) '.' subroutineName
 		// 									'(' exprList ')'
 		// className | varName
-		kind := kindOf(cur.str)
+		index := indexOf(cur.str)
 		var category string
 		var subroutineName string
 		nArgs := 0
-		if kind == iNone {
+		if index == -1 {
 			category = CLASS
 			subroutineName = cur.str
 		} else {
-			category = string(kind)
+			category = string(kindOf(cur.str))
 			subroutineName = TypeOf(cur.str)
 			writePushIdentifier(cur.str)
 			nArgs++
@@ -481,6 +482,8 @@ func compileExpression() {
 			writeArithmetic(aEq)
 		case AND:
 			writeArithmetic(aAnd)
+		case OR:
+			writeArithmetic(aOr)
 		}
 	}
 	results = append(results, "</expression>")
@@ -541,15 +544,21 @@ func compileTerm() {
 			// subroutineCall = (className | varName) '.' subroutineName
 			// 									'(' exprList ')'
 			// className | varName
-			kind := kindOf(cur.str)
+			index := indexOf(cur.str)
 			var category string
-			if kind == iNone {
+			var subroutineName string
+			nArgs := 0
+			if index == -1 {
 				category = CLASS
+				subroutineName = cur.str
 			} else {
-				category = string(kind)
+				category = string(kindOf(cur.str))
+				subroutineName = TypeOf(cur.str)
+				writePushIdentifier(cur.str)
+				nArgs++
 			}
+
 			compileIdentifier(cur, category, USED)
-			subroutineName := cur.str
 			cur = nextToken()
 			// '.'
 			compileToken(cur)
@@ -560,7 +569,7 @@ func compileTerm() {
 			cur = nextToken()
 			compileToken(cur) // '('
 			consume(LPAREN)
-			nArgs := compileExpressionList()
+			nArgs += compileExpressionList()
 			compileToken(cur) // ')'
 			consume(RPAREN)
 
@@ -750,9 +759,14 @@ func writePushIdentifier(str string) {
 	case iVar:
 		writePush(sLocal, index)
 	case iArg:
+		if subroutineType == METHOD {
+			index++
+		}
 		writePush(sArg, index)
 	case iField:
 		writePush(sThis, index)
+	case iStatic:
+		writePush(sStatic, index)
 	}
 }
 
@@ -762,9 +776,11 @@ func writePopIdentifier(str string) {
 	case iVar:
 		writePop(sLocal, index)
 	case iArg:
-		writePop(sArg, index)
+		writePop(sArg, index+1)
 	case iField:
 		writePop(sThis, index)
+	case iStatic:
+		writePop(sStatic, index)
 	}
 }
 
