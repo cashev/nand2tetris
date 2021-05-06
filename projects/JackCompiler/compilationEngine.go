@@ -603,12 +603,19 @@ func compileTerm() {
 	} else {
 		// integerConstant | stringConstant | keywordConsant
 		compileToken(cur)
-
-		index, err := strconv.Atoi(cur.str)
-		if err == nil {
+		if cur.kind == INT_CONST {
 			// integerConstant
+			index, _ := strconv.Atoi(cur.str)
 			writePush(sConst, index)
-		} else {
+		} else if cur.kind == STRING_CONST {
+			len := len(cur.str)
+			writePush(sConst, len)
+			writeCall("String.new", 1)
+			for _, c := range cur.str {
+				writePush(sConst, int(c))
+				writeCall("String.appendChar", 2)
+			}
+		} else if cur.kind == KEYWORD {
 			if cur.str == TRUE {
 				writePush(sConst, 1)
 				writeArithmetic(aNeg)
@@ -618,14 +625,6 @@ func compileTerm() {
 				writePush(sPointer, 0)
 			} else if cur.str == NULL {
 				writePush(sConst, 0)
-			} else {
-				len := len(cur.str)
-				writePush(sConst, len)
-				writeCall("String.new", 1)
-				for _, c := range cur.str {
-					writePush(sConst, int(c))
-					writeCall("String.appendChar", 2)
-				}
 			}
 		}
 
